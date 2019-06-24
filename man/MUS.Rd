@@ -4,7 +4,7 @@
 \alias{MUS}
 \title{MUS algorithm}
 \usage{
-MUS(C, clusters, prec_par = 5)
+MUS(C, clusters, prec_par = 10)
 }
 \arguments{
 \item{C}{\eqn{N \times N} matrix with a non-negligible number of zeros.
@@ -12,13 +12,15 @@ For instance, a similarity matrix estimated from a \eqn{N \times D} data matrix 
 are statistical units, or a co-association matrix resulting from clustering
 ensembles.}
 
-\item{clusters}{A vector of integers from \code{1:k} (with \code{k <= 4})
-indicating a partition of the \eqn{N} units resulting from clustering.}
+\item{clusters}{A vector of integers from \eqn{1:k}
+indicating the cluster to which each point is allocated (it requires \eqn{k < 5}, see Details).}
 
-\item{prec_par}{Optional argument. The maximum number of alternative pivots for each group.}
+\item{prec_par}{Optional argument. The maximum number of candidate pivots for each group.
+Default is 10.}
 }
 \value{
-\item{\code{pivots}}{ The \code{k} pivotal units}
+\item{\code{pivots}}{ A vector of integers in 1:N denoting the indeces of the \code{k} selcted pivotal units.}
+\item{\code{prec_par}}{The effective number of alternative pivots considered for each group. See Details.}
 }
 \description{
 Perform Maxima Units Search (MUS) algorithm on a large and sparse matrix in
@@ -46,10 +48,19 @@ and columns indexes, is identical or nearly identical.
 Practically, the resulting units
 have the desirable property to be representative of
 the group they belong to.
+
+With the argument \code{prec_par} the user may increase
+the powerful of the underlying MUS algorithm (see @egidi2018mus for details).
+Given the default value 10, the function internally computes an
+effective \code{prec_par} as \eqn{\min( 10, \min n_j )},
+where \eqn{n_j} is the number of units belonging to the group
+\eqn{j, \ j=1,\ldots,k}.
 }
 \examples{
+
 # Data generated from a mixture of three bivariate Gaussian distributions
 
+\dontrun{
 N <- 620
 centers  <- 3
 n1 <- 20
@@ -58,12 +69,10 @@ n3 <- 500
 x  <- matrix(NA, N,2)
 truegroup <- c( rep(1,n1), rep(2, n2), rep(3, n3))
 
-for (i in 1:n1){
- x[i,]=rmvnorm(1, c(1,5), sigma=diag(2))}
-for (i in 1:n2){
- x[n1+i,]=rmvnorm(1, c(4,0), sigma=diag(2))}
-for (i in 1:n3){
- x[n1+n2+i,]=rmvnorm(1, c(6,6), sigma=diag(2))}
+
+ x[1:n1,]=rmvnorm(n1, c(1,5), sigma=diag(2))
+ x[(n1+1):(n1+n2),]=rmvnorm(n2, c(4,0), sigma=diag(2))
+ x[(n1+n2+1):(n1+n2+n3),]=rmvnorm(n3, c(6,6), sigma=diag(2))
 
 # Build a similarity matrix from clustering ensembles
 
@@ -89,7 +98,7 @@ cl <- KMeans(x, centers)$cluster
 # Find three pivots
 
 mus_alg <- MUS(C = sim_matr, clusters = cl)
-
+}
 
 }
 \references{
@@ -98,4 +107,7 @@ Egidi, L., Pappadà, R., Pauli, F., Torelli, N. (2018).
 methodology and applications. In: Perna, C. , Pratesi, M., Ruiz-Gazen A. (eds.) Studies in
 Theoretical and Applied Statistics,
 Springer Proceedings in Mathematics and Statistics 227, pp. 71–81.
+}
+\author{
+Leonardo Egidi \email{legidi@units.it}, Roberta Pappadà
 }

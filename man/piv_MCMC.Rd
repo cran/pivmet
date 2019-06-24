@@ -2,68 +2,81 @@
 % Please edit documentation in R/bayes_mcmc.R
 \name{piv_MCMC}
 \alias{piv_MCMC}
-\title{JAGS Sampling for Gaussian Mixture Models and Clustering via Co-Association Matrix.}
+\title{JAGS/Stan Sampling for Gaussian Mixture Models and Clustering via Co-Association Matrix.}
 \usage{
-piv_MCMC(y, k, priors, nMC, piv.criterion = c("MUS", "maxsumint",
-  "minsumnoint", "maxsumdiff"), clustering = c("diana", "hclust"))
+piv_MCMC(y, k, nMC, priors, piv.criterion = "maxsumdiff",
+  clustering = "diana", software = "rjags", burn = 0.5 * nMC,
+  chains = 4, cores = 1)
 }
 \arguments{
-\item{y}{N-dimensional data vector/matrix.}
+\item{y}{\eqn{N}-dimensional vector for univariate data or
+\eqn{N \times 2} matrix for bivariate data.}
 
 \item{k}{Number of mixture components.}
 
-\item{priors}{Input prior hyperparameters (see Details).}
+\item{nMC}{Number of MCMC iterations for the JAGS/Stan function execution.}
 
-\item{nMC}{Number of MCMC iterations for the JAGS function execution.}
+\item{priors}{Input prior hyperparameters (see Details for default options).}
 
 \item{piv.criterion}{The pivotal criterion used for identifying one pivot
 for each group. Possible choices are: \code{"MUS", "maxsumint", "minsumnoint",
 "maxsumdiff"}.
-If \code{k <= 4}, the default method is \code{"MUS"};
-otherwise, the default method is \code{"maxsumdiff"} (see the Details and
+The default method is \code{"maxsumdiff"} (see the Details and
 the vignette).}
 
-\item{clustering}{The clustering technique adopted for partitioning the
-\code{N} observations into \code{k} groups. Possible choices: \code{"diana"} (default),
-\code{"hclust"}.}
+\item{clustering}{The algorithm adopted for partitioning the
+\eqn{N} observations into \code{k} groups. Possible choices are \code{"diana"} (default) or
+\code{"hclust"} for divisive and agglomerative hierarchical clustering, respectively.}
+
+\item{software}{The selected MCMC method to fit the model: \code{"rjags"} for the JAGS method, \code{"rstan"} for the Stan method.
+Default is \code{"rjags"}.}
+
+\item{burn}{The burn-in period (only if method \code{"rjags"} is selected). Default is \code{0.5}\eqn{\times} \code{nMC}.}
+
+\item{chains}{A positive integer specifying the number of Markov chains. The default is 4.}
+
+\item{cores}{The number of cores to use when executing the Markov chains in parallel (only if
+\code{software="rstan"}). Default is 1.}
 }
 \value{
 The function gives the MCMC output, the clustering
 solutions and the pivotal indexes. Here there is a complete list of outputs.
 
-\item{\code{Freq}}{  \code{k x 2} matrix where: the first column
-reports the number of units allocated to each group
-as given by JAGS program; the second
-column reports the same number of units as given by the
-chains' post-processing.}
 \item{\code{true.iter}}{ The number of MCMC iterations for which
-the number of JAGS groups exactly coincides with the prespecified
+the number of JAGS/Stan groups exactly coincides with the prespecified
 number of groups \code{k}.}
-\item{\code{z} }{  \code{N x k x true.iter} array with values: 1,
-if the \eqn{i}-th unit belongs to the \eqn{j}-th group at
-the \eqn{h}-th iteration; 0, otherwise.}
-\item{\code{ris}}{  MCMC output matrix as provided by JAGS.}
-\item{\code{groupPost}}{ \code{true.iter x N} matrix
+\item{\code{Mu}}{An estimate of the groups' means.}
+\item{\code{groupPost}}{ \eqn{true.iter \times N} matrix
 with values from \code{1:k} indicating the post-processed group allocation
 vector.}
-\item{\code{mu_switch}}{  If \code{y} is a vector, a \code{true.iter x k}
+\item{\code{mcmc_mean}}{  If \code{y} is a vector, a \eqn{true.iter \times k}
 matrix with the post-processed MCMC chains for the mean parameters; if
-\code{y} is a matrix, a \code{true.iter x 2 x k} array with
+\code{y} is a matrix, a \eqn{true.iter \times 2 \times k} array with
 the post-processed MCMC chains for the mean parameters.}
-\item{\code{mu_raw}}{ If \code{y} is a vector, a \code{nMC x k} matrix
+\item{\code{mcmc_sd}}{  If \code{y} is a vector, a \eqn{true.iter \times k}
+matrix with the post-processed MCMC chains for the sd parameters; if
+\code{y} is a matrix, a \eqn{true.iter \times 2} array with
+the post-processed MCMC chains for the sd parameters.}
+\item{\code{mcmc_weight}}{A \eqn{true.iter \times k}
+matrix with the post-processed MCMC chains for the weights parameters.}
+\item{\code{mcmc_mean_raw}}{ If \code{y} is a vector, a \eqn{(nMC-burn) \times k} matrix
 with the raw MCMC chains for the mean parameters as given by JAGS; if
-\code{y} is a matrix, a \code{nMC x 2 x k} array with the raw MCMC chains
-for the mean parameters as given by JAGS.}
-\item{\code{C}}{Co-association matrix constructed from the MCMC sample.}
-\item{\code{grr}}{Group vector allocation as provided by
+\code{y} is a matrix, a \eqn{(nMC-burn) \times 2 \times k} array with the raw MCMC chains
+for the mean parameters as given by JAGS/Stan.}
+\item{\code{mcmc_sd_raw}}{ If \code{y} is a vector, a \eqn{(nMC-burn) \times k} matrix
+with the raw MCMC chains for the sd parameters as given by JAGS/Stan; if
+\code{y} is a matrix, a \eqn{(nMC-burn) \times 2} array with the raw MCMC chains
+for the sd parameters as given by JAGS/Stan.}
+\item{\code{mcmc_weight_raw}}{A \eqn{(nMC-burn) \times k} matrix
+with the raw MCMC chains for the weights parameters as given by JAGS/Stan.}
+\item{\code{C}}{The \eqn{N \times N} co-association matrix constructed from the MCMC sample.}
+\item{\code{grr}}{The vector of cluster membership returned by
 \code{"diana"} or \code{"hclust"}.}
-\item{\code{pivots}}{ The pivotal units identified by the
-selected pivotal criterion.}
-\item{\code{piv.criterion}}{ Gives the pivotal criterion used for identifying
-the pivots.}
+\item{\code{pivots}}{The vector of indices of pivotal units identified by the selected pivotal criterion.}
+\item{\code{model}}{The JAGS/Stan model code. Apply the \code{"cat"} function for a nice visualization of the code.}
 }
 \description{
-Perform MCMC JAGS sampling for Gaussian mixture models, post-process the chains and apply a clustering technique to the MCMC sample. Pivotal units for each group are selected among four alternative criteria.
+Perform MCMC JAGS sampling or HMC Stan sampling for Gaussian mixture models, post-process the chains and apply a clustering technique to the MCMC sample. Pivotal units for each group are selected among four alternative criteria.
 }
 \details{
 The function fits univariate and bivariate Bayesian Gaussian mixture models of the form
@@ -95,16 +108,23 @@ if the prior distribution \eqn{p_0(\mu,\pi,\phi)} is invariant under a permutati
 p(\mu,\pi,\phi| y) \propto p_0(\mu,\pi,\phi)L(y;\mu,\pi,\phi)}
 is multimodal with (at least) \eqn{k!} modes.
 
-Priors are chosen as weakly informative. For univariate mixtures,
-the specification is the same as the function \code{BMMmodel} of the
+Depending on the selected software, the model parametrization
+changes in terms of the prior choices.
+Precisely, the JAGS philosophy with the underlying Gibbs sampling
+is to use noninformative priors, and conjugate priors are
+preferred for computational speed.
+Conversely, Stan adopts weakly informative priors,
+with no need to explicitly use the conjugacy.
+For univariate mixtures, when
+\code{software="rjags"} the specification is the same as the function \code{BMMmodel} of the
 \code{bayesmix} package:
 
- \deqn{\mu_j \sim \mathcal{N}(0, 1/B0inv)}
+ \deqn{\mu_j \sim \mathcal{N}(\mu_0, 1/B0inv)}
  \deqn{\phi_j \sim \mbox{invGamma}(nu0Half, nu0S0Half)}
  \deqn{\pi \sim \mbox{Dirichlet}(1,\ldots,1)}
  \deqn{S0 \sim \mbox{Gamma}(g0Half, g0G0Half),}
 
- with default values: \eqn{B0inv=0.1, nu0Half =10, S0=2,
+ with default values: \eqn{\mu_0=0, B0inv=0.1, nu0Half =10, S0=2,
  nu0S0Half= nu0Half\times S0,
  g0Half = 5e-17, g0G0Half = 5e-33}, in accordance with the default
  specification:
@@ -114,23 +134,64 @@ the specification is the same as the function \code{BMMmodel} of the
 
  (see \code{bayesmix} for further details and choices).
 
-For bivariate mixtures, the prior specification is the following:
+ When \code{software="rstan"}, the prior specification is:
+
+ \deqn{\mu_j \sim \mathcal{N}(\mu_0, 1/B0inv)}
+ \deqn{\phi_j \sim \mbox{Lognormal}(\mu_{\phi}, \sigma_{\phi})}
+ \deqn{\pi_j \sim \mbox{Uniform}(0,1),}
+
+ with default values: \eqn{\mu_0=0, B0inv=0.1, \mu_{\phi}=0, \sigma_{\phi}=2}.
+The users may specify new hyperparameter values with the argument:
+
+\code{priors=list(mu_0=1, B0inv=0.2, mu_phi=3, sigma_phi=5)}
+
+For bivariate mixtures, when \code{software="rjags"} the prior specification is the following:
 
 \deqn{ \bm{\mu}_j  \sim \mathcal{N}_2(\bm{\mu}_0, S2)}
 \deqn{ 1/\Sigma \sim \mbox{Wishart}(S3, 3)}
-\deqn{\pi \sim \mbox{Dirichlet}(1,\ldots,1),}
+\deqn{\pi \sim \mbox{Dirichlet}(\bm{\alpha}),}
 
-where \eqn{S2} and \eqn{S3} are diagonal matrices
-with diagonal elements (the variances)
+where  \eqn{\bm{\alpha}} is a \eqn{k}-dimensional vector
+and \eqn{S_2} and \eqn{S_3}
+are positive definite matrices. By default, \eqn{\bm{\mu}_0=\bm{0}},
+\eqn{\bm{\alpha}=(1,\ldots,1)} and \eqn{S_2} and \eqn{S_3} are diagonal matrices,
+with diagonal elements
 equal to 1e+05. The user may specify other values for the hyperparameters
-\eqn{\bm{\mu}_0, S2, S3} via \code{priors} argument in such a way:
+\eqn{\bm{\mu}_0, S_2, S_3} and \eqn{\bm{\alpha}} via \code{priors} argument in such a way:
 
-\code{priors =list(mu0 = c(1,1), S2 = ...,S3 = ...)},
 
-with the constraint for \eqn{S2} and \eqn{S3} to be positive definite.
+\code{priors =list(mu_0 = c(1,1), S2 = ..., S3 = ..., alpha = ...)}
 
-The function performs JAGS sampling using the \code{bayesmix} package for univariate Gaussian mixtures, and the \code{runjags}
-package for bivariate Gaussian mixtures. After MCMC sampling, this function
+with the constraint for \eqn{S2} and \eqn{S3} to be positive definite,
+and \eqn{\bm{\alpha}} a vector of dimension \eqn{k} with nonnegative elements.
+
+When \code{software="rstan"}, the prior specification is:
+
+\deqn{ \bm{\mu}_j  \sim \mathcal{N}_2(\bm{\mu}_0, LDL^{T})}
+\deqn{L \sim \mbox{LKJ}(\eta)}
+\deqn{D_j \sim \mbox{HalfCauchy}(0, \sigma_d).}
+
+The covariance matrix is expressed in terms of the LDL decomposition as \eqn{LDL^{T}},
+a variant of the classical Cholesky decomposition, where \eqn{L} is a \eqn{2 \times 2}
+lower unit triangular matrix and \eqn{D} is a \eqn{2 \times 2} diagonal matrix.
+The Cholesky correlation factor \eqn{L} is assigned a LKJ prior with \eqn{\eta} degrees of freedom,  which,
+combined with priors on the standard deviations of each component, induces a prior on the covariance matrix;
+as \eqn{\eta \rightarrow \infty} the magnitude of correlations between components decreases,
+whereas \eqn{\eta=1} leads to a uniform prior distribution for \eqn{L}.
+By default, the hyperparameters are \eqn{\bm{\mu}_0=\bm{0}}, \eqn{\sigma_d=2.5, \eta=1}.
+The user may propose some different values with the argument:
+
+
+\code{priors=list(mu_0=c(1,2), sigma_d = 4, eta =2)}
+
+
+If \code{software="rjags"} the function performs JAGS sampling using the \code{bayesmix} package
+for univariate Gaussian mixtures, and the \code{runjags}
+package for bivariate Gaussian mixtures. If \code{software="rstan"} the function performs
+Hamiltonian Monte Carlo (HMC) sampling via the \code{rstan} package (see the vignette and the Stan project
+for any help).
+
+After MCMC sampling, this function
 clusters the units in \code{k} groups,
 calls the \code{piv_sel()} function and yields the
 pivots obtained from one among four different
@@ -144,12 +205,13 @@ length of the MCMC chains will be minor or equal than the input
 argument \code{nMC}; this length, corresponding to the value
 \code{true.iter} returned by the procedure, is the number of
 MCMC iterations for which
-the number of JAGS groups exactly coincides with the prespecified
+the number of JAGS/Stan groups exactly coincides with the prespecified
 number of groups \code{k}.
 }
 \examples{
 
-# Bivariate simulation
+### Bivariate simulation
+
 \dontrun{
 N   <- 200
 k   <- 4
@@ -159,29 +221,40 @@ M2  <- c(25.5,.1)
 M3  <- c(49.5,8)
 M4  <- c(63.0,.1)
 Mu  <- matrix(rbind(M1,M2,M3,M4),c(4,2))
-stdev    <- cbind(rep(1,k), rep(200,k))
-Sigma.p1 <- matrix(c(stdev[1,1],0,0,stdev[1,1]), nrow=2, ncol=2)
-Sigma.p2 <- matrix(c(stdev[1,2],0,0,stdev[1,2]), nrow=2, ncol=2)
+sds <- cbind(rep(1,k), rep(20,k))
+Sigma.p1 <- matrix(c(sds[1,1]^2,0,0,sds[1,1]^2), nrow=2, ncol=2)
+Sigma.p2 <- matrix(c(sds[1,2]^2,0,0,sds[1,2]^2), nrow=2, ncol=2)
 W <- c(0.2,0.8)
-sim <- piv_sim(N,k,Mu, stdev, Sigma.p1,Sigma.p2,W)
+sim <- piv_sim(N = N, k = k, Mu = Mu,
+               Sigma.p1 = Sigma.p1,
+               Sigma.p2 = Sigma.p2, W = W)
+
+## rjags (default)
 res <- piv_MCMC(y = sim$y, k =k, nMC = nMC)
-#changing priors
+
+## rstan
+res_stan <- piv_MCMC(y = sim$y, k =k, nMC = nMC,
+                     software ="rstan")
+
+# changing priors
 res2 <- piv_MCMC(y = sim$y,
                  priors = list (
-                 mu0=c(1,1),
+                 mu_0=c(1,1),
                  S2 = matrix(c(0.002,0,0, 0.1),2,2, byrow=TRUE),
                  S3 = matrix(c(0.1,0,0,0.1), 2,2, byrow =TRUE)),
                  k = k, nMC = nMC)
 }
 
 
-# Fishery data (bayesmix package)
+### Fishery data (bayesmix package)
+
 \dontrun{
 data(fish)
 y <- fish[,1]
 k <- 5
 nMC <- 5000
 res <- piv_MCMC(y = y, k = k, nMC = nMC)
+
 # changing priors
 res2   <- piv_MCMC(y = y,
                    priors = list(kind = "condconjugate",
@@ -194,5 +267,5 @@ Egidi, L., Pappadà, R., Pauli, F. and Torelli, N. (2018). Relabelling in Bayesi
 Models by Pivotal Units. Statistics and Computing, 28(4), 957-969.
 }
 \author{
-Leonardo Egidi \url{legidi@units.it}
+Leonardo Egidi \email{legidi@units.it}
 }

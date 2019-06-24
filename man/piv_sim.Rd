@@ -13,24 +13,28 @@ piv_sim(N, k, Mu, stdev, Sigma.p1 = matrix(c(1, 0, 0, 1), 2, 2, byrow =
 
 \item{k}{The desired number of mixture components.}
 
-\item{Mu}{The input mean vector/matrix.}
+\item{Mu}{The input mean vector of length \eqn{k} for univariate
+Gaussian mixtures; the input \eqn{k \times 2} matrix with the
+means' coordinates for bivariate Gaussian mixtures.}
 
-\item{stdev}{A \code{k x2} matrix of input standard deviations,
-one for each group (from 1 to \code{k}) and for each subgroup (from 1 to 2).
-For univariate mixtures only.}
+\item{stdev}{For univariate mixtures, the  \eqn{k \times 2} matrix
+of input standard deviations,
+where the first column contains the parameters for subgroup 1,
+and the second column contains the parameters for subgroup 2.}
 
-\item{Sigma.p1}{The covariance matrix for the first subgroup. For bivariate mixtures only.}
+\item{Sigma.p1}{The \eqn{2 \times 2} covariance matrix for the first subgroup. For bivariate mixtures only.}
 
-\item{Sigma.p2}{The covariance matrix for the second subgroup. For bivariate mixtures only.}
+\item{Sigma.p2}{The \eqn{2 \times 2} covariance matrix for the second subgroup. For bivariate mixtures only.}
 
-\item{W}{The vector for the mixture weights of the two subgroups,}
+\item{W}{The vector for the mixture weights of the two subgroups.}
 }
 \value{
-\item{\code{y}}{The \code{N} simulated observations.}
-\item{\code{true.group}}{A vector of integers from \code{1:k}
+\item{\code{y}}{The \eqn{N} simulated observations.}
+\item{\code{true.group}}{A vector of integers from \eqn{1:k}
 indicating the values of the latent variables \eqn{Z_i}.}
-\item{\code{subgroups}}{A \code{2 x N} matrix with values 1 or 2
-indicating the subgroup to which each observation is drawn from.}
+\item{\code{subgroups}}{A \eqn{k \times N} matrix where
+each row contains the index subgroup for the observations
+in the \eqn{k}-th group.}
 }
 \description{
 Simulate N observations from a nested Gaussian mixture model
@@ -75,14 +79,14 @@ M1 <- c(-45,8)
 M2 <- c(45,.1)
 M3 <- c(100,8)
 Mu <- matrix(rbind(M1,M2,M3),c(k,2))
-stdev    <- cbind(rep(1,k), rep(200,k))
-Sigma.p1 <- matrix(c(stdev[1,1],0,0,stdev[1,1]),
-nrow=2, ncol=2)
-Sigma.p2 <- matrix(c(stdev[1,2],0,0,stdev[1,2]),
- nrow=2, ncol=2)
+sds <- cbind(rep(1,k), rep(20,k))
+Sigma.p1 <- matrix(c( sds[1,1]^2, 0,0,
+                      sds[1,1]^2), nrow=2, ncol=2)
+Sigma.p2 <- matrix(c(sds[1,2]^2, 0,0,
+                      sds[1,2]^2), nrow=2, ncol=2)
 W   <- c(0.2,0.8)
-sim <- piv_sim(N, k, Mu, Sigma.p1 = Sigma.p1,
-Sigma.p2 = Sigma.p2, W)
-plot(sim$y, xlab="y[,1]", ylab="y[,2]")
+sim <- piv_sim(N = N, k = k, Mu = Mu, Sigma.p1 = Sigma.p1,
+Sigma.p2 = Sigma.p2, W = W)
+graphics::plot(sim$y, xlab="y[,1]", ylab="y[,2]")
 
 }

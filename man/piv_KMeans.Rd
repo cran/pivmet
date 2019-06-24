@@ -4,45 +4,54 @@
 \alias{piv_KMeans}
 \title{k-means Clustering Using Pivotal Algorithms For Seeding}
 \usage{
-piv_KMeans(x, centers, alg.type = c("KMeans", "hclust"),
+piv_KMeans(x, centers, alg.type = "KMeans", method = "average",
   piv.criterion = c("MUS", "maxsumint", "minsumnoint", "maxsumdiff"),
-  H = 1000, opt = list(iter.max = 10, num.seeds = 10, prec.par = 5))
+  H = 1000, iter.max = 10, num.seeds = 10, prec_par = 10)
 }
 \arguments{
 \item{x}{A \eqn{N \times D} data matrix, or an object that can be coerced to such a matrix (such as a numeric vector or a dataframe with all numeric columns).}
 
-\item{centers}{The number of clusters in the solution.}
+\item{centers}{The number of groups for the the \eqn{k}-means solution.}
 
 \item{alg.type}{The clustering algorithm for the initial partition of the
 \eqn{N} units into the desired number of clusters.
 Possible choices are \code{"KMeans"} (default) and \code{"hclust"}.}
 
+\item{method}{If \code{alg.type} is \code{"hclust"}, the character string
+defining the clustering method. The methods implemented are  \code{"single"},
+\code{"complete"}, \code{"average"}, \code{"ward.D"}, \code{"ward.D2"}, \code{"mcquitty"},
+\code{"median"}, \code{"centroid"}. The default is \code{"average"}.}
+
 \item{piv.criterion}{The pivotal criterion used for identifying one pivot
 for each group. Possible choices are: \code{"MUS", "maxsumint", "minsumnoint",
 "maxsumdiff"}.
 If \code{centers <= 4}, the default method is \code{"MUS"};
-otherwise, the default method is \code{"maxsumdiff"} (see the details and
+otherwise, the default method is \code{"maxsumint"} (see the details and
 the vignette).}
 
-\item{H}{If \code{"MUS"} is selected, this is the number of
-distinct k-means partitions used for building a \eqn{N \times N}
-co-association matrix.}
+\item{H}{The number of distinct \eqn{k}-means runs used for building the \eqn{N \times N} co-association matrix. Default is 10^3.}
 
-\item{opt}{List of optional arguments to be passed to \code{MUS} or \code{KMeans}.}
+\item{iter.max}{If \code{alg.type} is \code{"KMeans"}, the maximum number of iterations to be passed to \code{KMeans()}. Default is 10.}
+
+\item{num.seeds}{If \code{alg.type} is \code{"KMeans"}, the number of different starting random seeds to be passed to \code{KMeans()}. Default is 10.}
+
+\item{prec_par}{If \code{piv.criterion} is \code{"MUS"}, the maximum number of competing pivots in each group. If groups' sizes are less than the default value, which is 10,
+then it is set equal to the cardinality of the smallest group in the initial partition.}
 }
 \value{
 A list with components
 
 \item{\code{cluster}}{A vector of integers indicating the cluster to which each point is allocated.}
 \item{\code{centers}}{A matrix of cluster centers (centroids).}
+\item{\code{coass}}{The co-association matrix built from ensemble clustering.}
+\item{\code{pivots}}{The pivotal units identified by the selected pivotal criterion.}
 \item{\code{totss}}{The total sum of squares.}
 \item{\code{withinss}}{The within-cluster sum of squares for each cluster.}
 \item{\code{tot.withinss}}{The within-cluster sum of squares summed across clusters.}
 \item{\code{betwennss}}{The between-cluster sum of squared distances.}
 \item{\code{size}}{ The number of points in each cluster.}
 \item{\code{iter}}{The number of (outer) iterations.}
-\item{\code{ifault}}{integer: indicator of a possible algorithm problem – for experts.}
-\item{\code{pivots}}{The pivotal units identified by the selected pivotal criterion.}
+\item{\code{ifault}}{integer: indicator of a possible algorithm problem (for experts).}
 }
 \description{
 Perform classical k-means clustering on a data matrix using pivots as
@@ -62,6 +71,7 @@ in order to build the co-association matrix of data units.
 \examples{
 
 # Data generated from a mixture of three bivariate Gaussian distributions
+
 \dontrun{
 N  <- 620
 k  <- 3
@@ -71,12 +81,9 @@ n3 <- 500
 x  <- matrix(NA, N,2)
 truegroup <- c( rep(1,n1), rep(2, n2), rep(3, n3))
 
-for (i in 1:n1){
- x[i,]=rmvnorm(1, c(1,5), sigma=diag(2))}
-for (i in 1:n2){
- x[n1+i,]=rmvnorm(1, c(4,0), sigma=diag(2))}
-for (i in 1:n3){
- x[n1+n2+i,]=rmvnorm(1, c(6,6), sigma=diag(2))}
+ x[1:n1,]=rmvnorm(n1, c(1,5), sigma=diag(2))
+ x[(n1+1):(n1+n2),]=rmvnorm(n2, c(4,0), sigma=diag(2))
+ x[(n1+n2+1):(n1+n2+n3),]=rmvnorm(n3, c(6,6), sigma=diag(2))
 
 # Apply piv_KMeans with MUS as pivotal criterion
 
@@ -91,27 +98,22 @@ res2 <- piv_KMeans(x, k, piv.criterion ="maxsumdiff")
 par(mfrow=c(1,2), pty="s")
 colors_cluster <- c("grey", "darkolivegreen3", "coral")
 colors_centers <- c("black", "darkgreen", "firebrick")
-plot(x, col = colors_cluster[truegroup],
+graphics::plot(x, col = colors_cluster[truegroup],
    bg= colors_cluster[truegroup], pch=21, xlab="x[,1]",
    ylab="x[,2]", cex.lab=1.5,
    main="True data", cex.main=1.5)
 
-plot(x, col = colors_cluster[res$cluster],
+graphics::plot(x, col = colors_cluster[res$cluster],
    bg=colors_cluster[res$cluster], pch=21, xlab="x[,1]",
    ylab="x[,2]", cex.lab=1.5,
    main="piv_KMeans", cex.main=1.5)
-points(x[res$pivots[1],1], x[res$pivots[1],2],
-   pch=24, col=colors_centers[1],bg=colors_centers[1],
-   cex=1.5)
-points(x[res$pivots[2],1], x[res$pivots[2],2],
-   pch=24,  col=colors_centers[2], bg=colors_centers[2],
-   cex=1.5)
-points(x[res$pivots[3],1], x[res$pivots[3],2],
-   pch=24, col=colors_centers[3], bg=colors_centers[3],
-   cex=1.5)
+points(x[res$pivots, 1], x[res$pivots, 2],
+      pch=24, col=colors_centers,bg=colors_centers,
+      cex=1.5)
 points(res$centers, col = colors_centers[1:k],
    pch = 8, cex = 2)
-   }
+}
+
 }
 \references{
 Egidi, L., Pappadà, R., Pauli, F., Torelli, N. (2018).
@@ -119,5 +121,5 @@ K-means seeding via MUS algorithm. Conference Paper,
 Book of Short Papers, SIS2018, ISBN: 9788891910233.
 }
 \author{
-Leonardo Egidi \url{legidi@units.it}
+Leonardo Egidi \email{legidi@units.it}, Roberta Pappada
 }

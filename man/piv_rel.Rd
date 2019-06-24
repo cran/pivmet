@@ -4,28 +4,22 @@
 \alias{piv_rel}
 \title{Performing the pivotal relabelling step and computing the relabelled posterior estimates}
 \usage{
-piv_rel(mcmc, nMC)
+piv_rel(mcmc)
 }
 \arguments{
 \item{mcmc}{The output of the MCMC sampling from \code{piv_MCMC}.}
-
-\item{nMC}{The number of total MCMC iterations (given in input to the \code{piv_MCMC} function, or any function suited for MCMC sampling).}
 }
 \value{
 This function gives the relabelled posterior estimates--both mean and medians--obtained from the Markov chains of the MCMC sampling.
 
 \item{\code{final_it}}{The final number of valid MCMC iterations,
-as explained in Details}
-\item{\code{final_it_p}}{\code{final_it/nMC}}
-\item{\code{mu_rel_mean}}{ \code{k}-vector (in case of univariate mixture)
-or \code{k x 2}
-matrix (in case of bivariate mixture) of estimated posterior means for the mean parameters.}
-\item{\code{mu_rel_median}}{ \code{k}-vector (in case of univariate mixture)
-or \code{k x 2}
-matrix (in case of bivariate mixture) of estimated posterior medians for the mean parameters.}
-\item{\code{mu_rel}}{\code{final_it x k} matrix (in case of univariate mixtures)
-or \code{final_it x 2 x k} array (in case of bivariate mixtures)
-for the complete relabelled chains}
+as explained in Details.}
+\item{\code{final_it_p}}{The proportion of final valid MCMC iterations.}
+\item{\code{rel_mean}}{The relabelled chains of the means: a \code{final_it} \eqn{\times k} matrix for univariate data,
+or a \code{final_it} \eqn{\times 2 \times k} array for bivariate data.}
+\item{\code{rel_sd}}{The relabelled chains of the sd's: a \code{final_it} \eqn{\times k} matrix for univariate data,
+or a \code{final_it} \eqn{\times 2} matrix for bivariate data.}
+\item{\code{rel_weight}}{The relabelled chains of the weights: a \code{final_it} \eqn{\times k} matrix.}
 }
 \description{
 This function allows to perform the pivotal relabelling procedure described in Egidi et al. (2018) and to obtain the relabelled posterior estimates.
@@ -105,12 +99,13 @@ nMC <- 2500
 k   <- 3
 p   <- rep(1/k,k)
 x   <- 3
-stdev <- cbind(rep(1,k), rep(200,k))
+stdev <- cbind(rep(1,k), rep(20,k))
 Mu    <- seq(-trunc(k/2)*x,trunc(k/2)*x,length=k)
 W     <- c(0.2,0.8)
-sim   <- piv_sim(N,k,Mu,stdev,W=W)
+sim   <- piv_sim(N = N, k = k, Mu = Mu,
+                 stdev = stdev, W=W)
 res   <- piv_MCMC(y = sim$y, k =k, nMC = nMC)
-rel   <- piv_rel(mcmc=res, nMC = nMC)
+rel   <- piv_rel(mcmc=res)
 }
 
 #Bivariate simulation
@@ -122,15 +117,17 @@ M1  <- c(-.5,8)
 M2  <- c(25.5,.1)
 M3  <- c(49.5,8)
 Mu  <- matrix(rbind(M1,M2,M3),c(k,2))
-stdev <- cbind(rep(1,k), rep(200,k))
-Sigma.p1 <- matrix(c(stdev[1,1],0,0,stdev[1,1]),
+sds <- cbind(rep(1,k), rep(20,k))
+Sigma.p1 <- matrix(c(sds[1,1]^2,0,0,sds[1,1]^2),
                    nrow=2, ncol=2)
-Sigma.p2 <- matrix(c(stdev[1,2],0,0,stdev[1,2]),
+Sigma.p2 <- matrix(c(sds[1,2]^2,0,0,sds[1,2]^2),
                    nrow=2, ncol=2)
 W <- c(0.2,0.8)
-sim <- piv_sim(N,k,Mu,stdev,Sigma.p1,Sigma.p2,W)
+sim <- piv_sim(N = N, k = k, Mu = Mu,
+               Sigma.p1 = Sigma.p1,
+               Sigma.p2 = Sigma.p2, W = W)
 res <- piv_MCMC(y = sim$y, k = k, nMC = nMC)
-rel <- piv_rel(mcmc = res, nMC = nMC)
+rel <- piv_rel(mcmc = res)
 piv_plot(y=sim$y, mcmc=res, rel_est = rel, type="chains")
 piv_plot(y=sim$y, mcmc=res, rel_est = rel,
          type="hist")
@@ -142,5 +139,5 @@ Egidi, L., Pappadà, R., Pauli, F. and Torelli, N. (2018). Relabelling in Bayesi
 Models by Pivotal Units. Statistics and Computing, 28(4), 957-969.
 }
 \author{
-Leonardo Egidi \url{legidi@units.it}
+Leonardo Egidi \email{legidi@units.it}
 }

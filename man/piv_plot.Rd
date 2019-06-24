@@ -4,7 +4,8 @@
 \alias{piv_plot}
 \title{Plotting outputs from pivotal relabelling}
 \usage{
-piv_plot(y, mcmc, rel_est, type = c("chains", "estimates", "hist"))
+piv_plot(y, mcmc, rel_est, par = c("mean", "sd", "weight", "all"),
+  type = c("chains", "hist"))
 }
 \arguments{
 \item{y}{Data vector or matrix.}
@@ -13,11 +14,30 @@ piv_plot(y, mcmc, rel_est, type = c("chains", "estimates", "hist"))
 
 \item{rel_est}{Pivotal estimates as provided by \code{piv_rel}.}
 
-\item{type}{Type of plots required. Choose among: \code{"chains"}, \code{"estimates"}, \code{"hist"}.}
+\item{par}{The parameters for which estimates are displayed. Choose among: \code{"mean"}, \code{"sd"}, \code{"weight"} and \code{"all"}.}
+
+\item{type}{Type of plots required. Choose among: \code{"chains"},  \code{"hist"}.}
 }
 \description{
-Plot and visualize MCMC outputs, posterior relabelled chains and estimates and diagnostics.
+Plot and visualize MCMC outputs and posterior relabelled chains/estimates.
+}
+\examples{
+
+# Fishery data
+\dontrun{
+data(fish)
+y <- fish[,1]
+N <- length(y)
+k <- 5
+nMC <- 5000
+res <- piv_MCMC(y = y, k = k, nMC = nMC)
+rel <- piv_rel(mcmc=res, nMC = nMC)
+piv_plot(y, res, rel, "chains")
+piv_plot(y, res, rel, "estimates")
+piv_plot(y, res, rel, "hist")
+}
+
 }
 \author{
-Leonardo Egidi \url{legidi@units.it}
+Leonardo Egidi \email{legidi@units.it}
 }

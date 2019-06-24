@@ -34,7 +34,6 @@ belonging to the `bayesmix` package:
 ``` r
 library(pivmet)
 #> Loading required package: bayesmix
-#> Loading required package: runjags
 #> Loading required package: rjags
 #> Loading required package: coda
 #> Linked to JAGS 4.3.0
@@ -44,6 +43,8 @@ library(pivmet)
 #> Loading required package: car
 #> Loading required package: carData
 #> Loading required package: sandwich
+#> Warning: replacing previous import 'rstan::plot' by 'graphics::plot' when
+#> loading 'pivmet'
 data(fish)
 y <- fish[,1]
 N <- length(y)  # sample size 
@@ -71,17 +72,18 @@ Finally, we can apply pivotal relabelling and inspect the new posterior
 estimates with the functions `piv_rel` and `piv_plot`, respectively:
 
 ``` r
-rel <- piv_rel(mcmc=res, nMC = nMC)
-piv_plot(y, res, rel, "chains")
+rel <- piv_rel(mcmc=res)
+piv_plot(y = y, mcmc = res, rel_est = rel, type = "chains")
 ```
 
 ![](man/figures/README-plot-1.png)<!-- -->
 
-``` r
-piv_plot(y, res, rel, "hist")
-```
+    #> Description: traceplots of the raw MCMC chains and the relabelled chains for all the model parameters: means, sds and weights. Each colored chain corresponds to one of the k distinct parameters of the mixture model. Overlapping chains may reveal that the MCMC sampler is not able to distinguish between the components.
+    piv_plot(y = y, mcmc = res, rel_est = rel, type = "hist")
 
 ![](man/figures/README-plot-2.png)<!-- -->
+
+    #> Description: histograms of the data along with the estimated posterior means (red points) from raw MCMC and relabelling algorithm. The blue line is the estimated density curve.
 
 ## Example 2. K-means clustering using MUS and other pivotal algorithms
 
@@ -139,13 +141,13 @@ par(mfrow=c(1,2))
 colors_cluster <- c("grey", "darkolivegreen3", "coral")
 colors_centers <- c("black", "darkgreen", "firebrick")
  
-plot(x, col = colors_cluster[truegroup]
+graphics::plot(x, col = colors_cluster[truegroup]
                  ,bg= colors_cluster[truegroup], pch=21,
                   xlab="y[,1]",
                   ylab="y[,2]", cex.lab=1.5,
                   main="True data", cex.main=1.5)
  
-plot(x, col = colors_cluster[kmeans_res$cluster], 
+graphics::plot(x, col = colors_cluster[kmeans_res$cluster], 
       bg=colors_cluster[kmeans_res$cluster], pch=21, xlab="y[,1]",
       ylab="y[,2]", cex.lab=1.5,main="K-means",  cex.main=1.5)
 points(kmeans_res$centers, col = colors_centers[1:centers], 
@@ -167,12 +169,12 @@ piv_res <- piv_KMeans(x, centers)
 par(mfrow=c(1,2), pty="s")
 colors_cluster <- c("grey", "darkolivegreen3", "coral")
 colors_centers <- c("black", "darkgreen", "firebrick")
-plot(x, col = colors_cluster[truegroup],
+graphics::plot(x, col = colors_cluster[truegroup],
    bg= colors_cluster[truegroup], pch=21, xlab="x[,1]",
    ylab="x[,2]", cex.lab=1.5,
    main="True data", cex.main=1.5)
 
-plot(x, col = colors_cluster[piv_res$cluster],
+graphics::plot(x, col = colors_cluster[piv_res$cluster],
    bg=colors_cluster[piv_res$cluster], pch=21, xlab="x[,1]",
    ylab="x[,2]", cex.lab=1.5,
    main="piv_Kmeans", cex.main=1.5)

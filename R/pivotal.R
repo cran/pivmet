@@ -1,20 +1,22 @@
 #'Pivotal Selection via Co-Association Matrix
 #'
 #'
-#'Finding the pivots according to three different
-#'methods involving a co-association matrix C.
+#'Finding pivotal units from a data partition and a
+#'co-association matrix C
+#'according to three different methods.
+#'
 #'@param C A \eqn{N \times N} co-association matrix, i.e.
 #'a matrix whose elements are co-occurrences of pair of units
 #'in the same cluster among \eqn{H} distinct partitions.
-#'@param clusters A vector of integers indicating
+#'@param clusters A vector of integers from \eqn{1:k} indicating
 #'a partition of the \eqn{N} units into, say, \eqn{k} groups.
-
+#'
 #'
 #'
 #'@details
 #'
 #' Given a set of \eqn{N} observations \eqn{(y_{1},y_{2},...,y_{N})}
-#' (\eqn{y_i} may be a \eqn{d}-dimensional vector, \eqn{d \geq 1}),
+#' (\eqn{y_i} may be a \eqn{d}-dimensional vector, \eqn{d \ge 1}),
 #' consider clustering methods to obtain \eqn{H} distinct partitions
 #' into \eqn{k} groups.
 #' The matrix \code{C} is the co-association matrix,
@@ -45,9 +47,9 @@
 #'
 #'@return
 #'
-#'\item{\code{pivots}}{ A matrix with \eqn{k} rows and three
+#'\item{\code{pivots}}{A matrix with \eqn{k} rows and three
 #' columns containing the indexes of the pivotal units for each method.}
-#' @author Leonardo Egidi \url{legidi@units.it}
+#' @author Leonardo Egidi \email{legidi@units.it}
 #' @references Egidi, L., Pappadà, R., Pauli, F. and Torelli, N. (2018). Relabelling in Bayesian Mixture
 #'Models by Pivotal Units. Statistics and Computing, 28(4), 957-969.
 #'
@@ -55,8 +57,9 @@
 #' # Iris data
 #'
 #'data(iris)
+#' # select the columns of variables
 #'x<- iris[,1:4]
-#'N <- length(iris[,1])
+#'N <- nrow(x)
 #'H <- 1000
 #'a <- matrix(NA, H, N)
 #'
@@ -76,22 +79,33 @@
 #'
 #'km <- kmeans(x, centers =3)
 #'
-#' # Find the pivots according to the three possible pivotal criterion
+#' # Apply three pivotal criteria to the co-association matrix
 #'
 #' ris <- piv_sel(C, clusters = km$cluster)
 #'
-#' plot(iris[,1], iris[,2], xlab ="Sepal.Length", ylab= "Sepal.Width",
+#' graphics::plot(iris[,1], iris[,2], xlab ="Sepal.Length", ylab= "Sepal.Width",
 #' col = km$cluster)
 #'
-#'  # Add the pivots according to maxsumdiff criterion
+#'  # Add the pivots chosen by the maxsumdiff criterion
 #'
-#' points( x[ris$pivot[,3], c( "Sepal.Length","Sepal.Width" )], col = 1:3,
+#' points( x[ris$pivots[,3], 1:2], col = 1:3,
 #' cex =2, pch = 8 )
 #'
 #'@export
 #'
 
 piv_sel<-function(C, clusters){
+
+  ### checks
+
+  # dimensions
+
+  if (dim(C)[1]!=length(clusters)){
+    stop("The length of the clusters vector does
+         not coincide with the rows of the matrix C")
+  }
+
+  ###
 
 N <- dim(C)[1]
 k <- length(unique(clusters))

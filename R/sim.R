@@ -8,20 +8,24 @@
 #'
 #' @param N The desired sample size.
 #' @param k The desired number of mixture components.
-#' @param Mu The input mean vector/matrix.
-#' @param stdev A \code{k x2} matrix of input standard deviations,
-#' one for each group (from 1 to \code{k}) and for each subgroup (from 1 to 2).
-#' For univariate mixtures only.
-#' @param Sigma.p1 The covariance matrix for the first subgroup. For bivariate mixtures only.
-#' @param Sigma.p2 The covariance matrix for the second subgroup. For bivariate mixtures only.
-#' @param W The vector for the mixture weights of the two subgroups,
+#' @param Mu The input mean vector of length \eqn{k} for univariate
+#' Gaussian mixtures; the input \eqn{k \times 2} matrix with the
+#' means' coordinates for bivariate Gaussian mixtures.
+#' @param stdev For univariate mixtures, the  \eqn{k \times 2} matrix
+#' of input standard deviations,
+#' where the first column contains the parameters for subgroup 1,
+#' and the second column contains the parameters for subgroup 2.
+#' @param Sigma.p1 The \eqn{2 \times 2} covariance matrix for the first subgroup. For bivariate mixtures only.
+#' @param Sigma.p2 The \eqn{2 \times 2} covariance matrix for the second subgroup. For bivariate mixtures only.
+#' @param W The vector for the mixture weights of the two subgroups.
 #' @return
 #'
-#' \item{\code{y}}{The \code{N} simulated observations.}
-#' \item{\code{true.group}}{A vector of integers from \code{1:k}
+#' \item{\code{y}}{The \eqn{N} simulated observations.}
+#' \item{\code{true.group}}{A vector of integers from \eqn{1:k}
 #' indicating the values of the latent variables \eqn{Z_i}.}
-#' \item{\code{subgroups}}{A \code{2 x N} matrix with values 1 or 2
-#' indicating the subgroup to which each observation is drawn from.}
+#' \item{\code{subgroups}}{A \eqn{k \times N} matrix where
+#' each row contains the index subgroup for the observations
+#' in the \eqn{k}-th group.}
 #'
 #' @details
 #'
@@ -60,15 +64,15 @@
 #' M2 <- c(45,.1)
 #' M3 <- c(100,8)
 #' Mu <- matrix(rbind(M1,M2,M3),c(k,2))
-#' stdev    <- cbind(rep(1,k), rep(200,k))
-#' Sigma.p1 <- matrix(c(stdev[1,1],0,0,stdev[1,1]),
-#' nrow=2, ncol=2)
-#' Sigma.p2 <- matrix(c(stdev[1,2],0,0,stdev[1,2]),
-#'  nrow=2, ncol=2)
+#' sds <- cbind(rep(1,k), rep(20,k))
+#' Sigma.p1 <- matrix(c( sds[1,1]^2, 0,0,
+#'                       sds[1,1]^2), nrow=2, ncol=2)
+#' Sigma.p2 <- matrix(c(sds[1,2]^2, 0,0,
+#'                       sds[1,2]^2), nrow=2, ncol=2)
 #' W   <- c(0.2,0.8)
-#' sim <- piv_sim(N, k, Mu, Sigma.p1 = Sigma.p1,
-#' Sigma.p2 = Sigma.p2, W)
-#' plot(sim$y, xlab="y[,1]", ylab="y[,2]")
+#' sim <- piv_sim(N = N, k = k, Mu = Mu, Sigma.p1 = Sigma.p1,
+#' Sigma.p2 = Sigma.p2, W = W)
+#' graphics::plot(sim$y, xlab="y[,1]", ylab="y[,2]")
 #'
 #' @export
 
@@ -81,11 +85,67 @@ piv_sim <- function(N,
                     W = c(0.5, 0.5)){
   # Generation---------------
 
-  if(missing(stdev)){
-    stdev <- cbind(rep(1,k), rep(200,k))
+
+  #############
+  ## checks
+
+  # k
+
+ if(is.numeric(Mu)==FALSE){
+    stop("Specify a numeric vector or matrix for 'Mu'")
   }
 
   if (is.vector(Mu)){
+    # check stdev
+    if (k != length(Mu)){
+      stop("The number of input means and the number of
+      components do not match'")
+    }
+
+    if(missing(stdev)){
+      stop("Argument 'stdev' missing with no default.")
+      #stdev <- cbind(rep(1,k), rep(20,k))
+    }
+
+    if (dim(stdev)[1]!=k){
+      stop("The number of rows of 'stdev' has to match
+            the number of mixture components, k.")
+    }
+  }else if (is.matrix(Mu)){
+    if (k != dim(Mu)[1]){
+      stop("The number of input means and the number of
+      components do not match")
+    }
+
+    # Sigma.p1 and Sigma.p2
+
+    if (is.positive.definite(Sigma.p1)==FALSE |
+        is.positive.definite(Sigma.p2)==FALSE){
+      stop("Matrix covariances should be positive definite!")
+    }
+
+    # checks stdev
+    if (missing(stdev)==FALSE){
+      warning("'stdev' not required for bivariate data")
+    }
+
+
+  }
+
+  # W
+
+  if (sum(W)!=1){
+    stop("Check that the sub-weights sum to one!")
+  }else if(length(W)!=2){
+    stop("The sub-weight vector should be of dimension two.")
+  }
+
+
+  ##########
+
+
+  if (is.vector(Mu)){
+
     true.group <- sample(1:k,N,replace=TRUE,prob=rep(1/k,k))
     Spike <- array()
     matrixpi <- matrix(rep(W,k), nrow=k, ncol=2, byrow = T)
