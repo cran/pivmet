@@ -11,6 +11,7 @@
 #'
 #' # Fishery data
 #'\dontrun{
+#' library(bayesmix)
 #' data(fish)
 #' y <- fish[,1]
 #' N <- length(y)
@@ -37,23 +38,23 @@ piv_plot <- function(y,
                      type = c("chains", "hist") ){
   colori <- c("red", "green", "violet", "blue")
 
+
   ### checks
+
+  # data dimension
+ if (!is.null(dim(y))){
+  if (dim(y)[2]>2){
+    stop("No plots available for D>2!")
+  }
+ }
 
   # par
   list_par <- c("mean", "sd", "weight", "all")
-  if (sum(par!=list_par)==4){
-    stop(paste("object ", "'", par,"'", " not found.
-    Please select one among the following parameters:
-    mean, sd, weight, all", sep=""))
-  }
+  par <- match.arg(par, list_par)
 
   # type
   list_type <- c("chains", "hist")
-  if (sum(type!=list_type)==2){
-    stop(paste("object ", "'", type,"'", " not found.
-    Please select one among the following types:
-    chains, hist", sep=""))
-  }
+  type <- match.arg(type, list_type)
 
   # missing type
 

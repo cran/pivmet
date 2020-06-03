@@ -1,3 +1,18 @@
+# pivmet 0.3.0
+
+## Major fix
+
+* multivariate mixtures allowed 
+* stan divergences
+* stan fit available (e.g. for bayesplot package)
+
+## Minor fix
+
+* drop packages dependencies
+* vignettes updated
+* runjags arguments renamed (mu, tau, eta)
+* more checks in piv_rel function
+
 # pivmet 0.2.0
 
 * rstan now incorporated to fit mixtures

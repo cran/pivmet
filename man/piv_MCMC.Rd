@@ -4,13 +4,14 @@
 \alias{piv_MCMC}
 \title{JAGS/Stan Sampling for Gaussian Mixture Models and Clustering via Co-Association Matrix.}
 \usage{
-piv_MCMC(y, k, nMC, priors, piv.criterion = "maxsumdiff",
-  clustering = "diana", software = "rjags", burn = 0.5 * nMC,
-  chains = 4, cores = 1)
+piv_MCMC(y, k, nMC, priors, piv.criterion = c("MUS", "maxsumint",
+  "minsumnoint", "maxsumdiff"), clustering = c("diana", "hclust"),
+  software = c("rjags", "rstan"), burn = 0.5 * nMC, chains = 4,
+  cores = 1)
 }
 \arguments{
 \item{y}{\eqn{N}-dimensional vector for univariate data or
-\eqn{N \times 2} matrix for bivariate data.}
+\eqn{N \times D} matrix for bivariate data.}
 
 \item{k}{Number of mixture components.}
 
@@ -51,21 +52,21 @@ with values from \code{1:k} indicating the post-processed group allocation
 vector.}
 \item{\code{mcmc_mean}}{  If \code{y} is a vector, a \eqn{true.iter \times k}
 matrix with the post-processed MCMC chains for the mean parameters; if
-\code{y} is a matrix, a \eqn{true.iter \times 2 \times k} array with
+\code{y} is a matrix, a \eqn{true.iter \times D \times k} array with
 the post-processed MCMC chains for the mean parameters.}
 \item{\code{mcmc_sd}}{  If \code{y} is a vector, a \eqn{true.iter \times k}
 matrix with the post-processed MCMC chains for the sd parameters; if
-\code{y} is a matrix, a \eqn{true.iter \times 2} array with
+\code{y} is a matrix, a \eqn{true.iter \times D} array with
 the post-processed MCMC chains for the sd parameters.}
 \item{\code{mcmc_weight}}{A \eqn{true.iter \times k}
 matrix with the post-processed MCMC chains for the weights parameters.}
 \item{\code{mcmc_mean_raw}}{ If \code{y} is a vector, a \eqn{(nMC-burn) \times k} matrix
 with the raw MCMC chains for the mean parameters as given by JAGS; if
-\code{y} is a matrix, a \eqn{(nMC-burn) \times 2 \times k} array with the raw MCMC chains
+\code{y} is a matrix, a \eqn{(nMC-burn) \times D \times k} array with the raw MCMC chains
 for the mean parameters as given by JAGS/Stan.}
 \item{\code{mcmc_sd_raw}}{ If \code{y} is a vector, a \eqn{(nMC-burn) \times k} matrix
 with the raw MCMC chains for the sd parameters as given by JAGS/Stan; if
-\code{y} is a matrix, a \eqn{(nMC-burn) \times 2} array with the raw MCMC chains
+\code{y} is a matrix, a \eqn{(nMC-burn) \times D} array with the raw MCMC chains
 for the sd parameters as given by JAGS/Stan.}
 \item{\code{mcmc_weight_raw}}{A \eqn{(nMC-burn) \times k} matrix
 with the raw MCMC chains for the weights parameters as given by JAGS/Stan.}
@@ -74,38 +75,39 @@ with the raw MCMC chains for the weights parameters as given by JAGS/Stan.}
 \code{"diana"} or \code{"hclust"}.}
 \item{\code{pivots}}{The vector of indices of pivotal units identified by the selected pivotal criterion.}
 \item{\code{model}}{The JAGS/Stan model code. Apply the \code{"cat"} function for a nice visualization of the code.}
+\item{\code{stanfit}}{An object of S4 class \code{stanfit} for the fitted model (only if \code{software="rstan"}).}
 }
 \description{
 Perform MCMC JAGS sampling or HMC Stan sampling for Gaussian mixture models, post-process the chains and apply a clustering technique to the MCMC sample. Pivotal units for each group are selected among four alternative criteria.
 }
 \details{
-The function fits univariate and bivariate Bayesian Gaussian mixture models of the form
+The function fits univariate and multivariate Bayesian Gaussian mixture models of the form
 (here for univariate only):
-\deqn{(Y_i|Z_i=j) \sim \mathcal{N}(\mu_j,\phi_j),}
+\deqn{(Y_i|Z_i=j) \sim \mathcal{N}(\mu_j,\sigma_j),}
 where the \eqn{Z_i}, \eqn{i=1,\ldots,N}, are i.i.d. random variables, \eqn{j=1,\dots,k},
-\eqn{\phi_j} is the group variance,  \eqn{Z_i \in {1,\ldots,k }} are the
+\eqn{\sigma_j} is the group variance,  \eqn{Z_i \in {1,\ldots,k }} are the
 latent group allocation, and
-\deqn{P(Z_i=j)=\pi_j.}
+\deqn{P(Z_i=j)=\eta_j.}
 The likelihood of the model is then
-\deqn{L(y;\mu,\pi,\phi) = \prod_{i=1}^N \sum_{j=1}^k \pi_j \mathcal{N}(\mu_j,\phi_j),}
-where \eqn{(\mu, \phi)=(\mu_{1},\dots,\mu_{k},\phi_{1},\ldots,\phi_{k})}
-are the component-specific parameters and \eqn{\pi=(\pi_{1},\dots,\pi_{k})}
+\deqn{L(y;\mu,\eta,\sigma) = \prod_{i=1}^N \sum_{j=1}^k \eta_j \mathcal{N}(\mu_j,\sigma_j),}
+where \eqn{(\mu, \sigma)=(\mu_{1},\dots,\mu_{k},\sigma_{1},\ldots,\sigma_{k})}
+are the component-specific parameters and \eqn{\eta=(\eta_{1},\dots,\eta_{k})}
 the mixture weights. Let \eqn{\nu} denote a permutation of \eqn{{ 1,\ldots,k }},
 and let \eqn{\nu(\mu)= (\mu_{\nu(1)},\ldots,} \eqn{ \mu_{\nu(k)})},
-\eqn{\nu(\phi)= (\phi_{\nu(1)},\ldots,} \eqn{ \phi_{\nu(k)})},
-\eqn{ \nu(\pi)=(\pi_{\nu(1)},\ldots,\pi_{\nu(k)})} be the
-corresponding permutations of \eqn{\mu}, \eqn{\phi} and \eqn{\pi}.
+\eqn{\nu(\sigma)= (\sigma_{\nu(1)},\ldots,} \eqn{ \sigma_{\nu(k)})},
+\eqn{ \nu(\eta)=(\eta_{\nu(1)},\ldots,\eta_{\nu(k)})} be the
+corresponding permutations of \eqn{\mu}, \eqn{\sigma} and \eqn{\eta}.
  Denote by \eqn{V} the set of all the permutations of the indexes
  \eqn{{1,\ldots,k }}, the likelihood above is invariant under any
  permutation \eqn{\nu \in V}, that is
 \deqn{
-L(y;\mu,\pi,\phi) = L(y;\nu(\mu),\nu(\pi),\nu(\phi)).}
+L(y;\mu,\eta,\sigma) = L(y;\nu(\mu),\nu(\eta),\nu(\sigma)).}
 As a consequence, the model is unidentified with respect to an
 arbitrary permutation of the labels.
 When Bayesian inference for the model is performed,
-if the prior distribution \eqn{p_0(\mu,\pi,\phi)} is invariant under a permutation of the indices, then so is the posterior. That is, if \eqn{p_0(\mu,\pi,\phi) = p_0(\nu(\mu),\nu(\pi),\phi)}, then
+if the prior distribution \eqn{p_0(\mu,\eta,\sigma)} is invariant under a permutation of the indices, then so is the posterior. That is, if \eqn{p_0(\mu,\eta,\sigma) = p_0(\nu(\mu),\nu(\eta),\sigma)}, then
 \deqn{
-p(\mu,\pi,\phi| y) \propto p_0(\mu,\pi,\phi)L(y;\mu,\pi,\phi)}
+p(\mu,\eta,\sigma| y) \propto p_0(\mu,\eta,\sigma)L(y;\mu,\eta,\sigma)}
 is multimodal with (at least) \eqn{k!} modes.
 
 Depending on the selected software, the model parametrization
@@ -120,8 +122,8 @@ For univariate mixtures, when
 \code{bayesmix} package:
 
  \deqn{\mu_j \sim \mathcal{N}(\mu_0, 1/B0inv)}
- \deqn{\phi_j \sim \mbox{invGamma}(nu0Half, nu0S0Half)}
- \deqn{\pi \sim \mbox{Dirichlet}(1,\ldots,1)}
+ \deqn{\sigma_j \sim \mbox{invGamma}(nu0Half, nu0S0Half)}
+ \deqn{\eta \sim \mbox{Dirichlet}(1,\ldots,1)}
  \deqn{S0 \sim \mbox{Gamma}(g0Half, g0G0Half),}
 
  with default values: \eqn{\mu_0=0, B0inv=0.1, nu0Half =10, S0=2,
@@ -137,19 +139,19 @@ For univariate mixtures, when
  When \code{software="rstan"}, the prior specification is:
 
  \deqn{\mu_j \sim \mathcal{N}(\mu_0, 1/B0inv)}
- \deqn{\phi_j \sim \mbox{Lognormal}(\mu_{\phi}, \sigma_{\phi})}
- \deqn{\pi_j \sim \mbox{Uniform}(0,1),}
+ \deqn{\sigma_j \sim \mbox{Lognormal}(\mu_{\sigma}, \tau_{\sigma})}
+ \deqn{\eta_j \sim \mbox{Uniform}(0,1),}
 
- with default values: \eqn{\mu_0=0, B0inv=0.1, \mu_{\phi}=0, \sigma_{\phi}=2}.
+ with default values: \eqn{\mu_0=0, B0inv=0.1, \mu_{\sigma}=0, \tau_{\sigma}=2}.
 The users may specify new hyperparameter values with the argument:
 
-\code{priors=list(mu_0=1, B0inv=0.2, mu_phi=3, sigma_phi=5)}
+\code{priors=list(mu_0=1, B0inv=0.2, mu_sigma=3, tau_sigma=5)}
 
-For bivariate mixtures, when \code{software="rjags"} the prior specification is the following:
+For multivariate mixtures, when \code{software="rjags"} the prior specification is the following:
 
-\deqn{ \bm{\mu}_j  \sim \mathcal{N}_2(\bm{\mu}_0, S2)}
-\deqn{ 1/\Sigma \sim \mbox{Wishart}(S3, 3)}
-\deqn{\pi \sim \mbox{Dirichlet}(\bm{\alpha}),}
+\deqn{ \bm{\mu}_j  \sim \mathcal{N}_D(\bm{\mu}_0, S2)}
+\deqn{ \Sigma^{-1} \sim \mbox{Wishart}(S3, D+1)}
+\deqn{\eta \sim \mbox{Dirichlet}(\bm{\alpha}),}
 
 where  \eqn{\bm{\alpha}} is a \eqn{k}-dimensional vector
 and \eqn{S_2} and \eqn{S_3}
@@ -167,27 +169,27 @@ and \eqn{\bm{\alpha}} a vector of dimension \eqn{k} with nonnegative elements.
 
 When \code{software="rstan"}, the prior specification is:
 
-\deqn{ \bm{\mu}_j  \sim \mathcal{N}_2(\bm{\mu}_0, LDL^{T})}
-\deqn{L \sim \mbox{LKJ}(\eta)}
-\deqn{D_j \sim \mbox{HalfCauchy}(0, \sigma_d).}
+\deqn{ \bm{\mu}_j  \sim \mathcal{N}_D(\bm{\mu}_0, LD*L^{T})}
+\deqn{L \sim \mbox{LKJ}(\epsilon)}
+\deqn{D^*_j \sim \mbox{HalfCauchy}(0, \sigma_d).}
 
-The covariance matrix is expressed in terms of the LDL decomposition as \eqn{LDL^{T}},
-a variant of the classical Cholesky decomposition, where \eqn{L} is a \eqn{2 \times 2}
-lower unit triangular matrix and \eqn{D} is a \eqn{2 \times 2} diagonal matrix.
-The Cholesky correlation factor \eqn{L} is assigned a LKJ prior with \eqn{\eta} degrees of freedom,  which,
+The covariance matrix is expressed in terms of the LDL decomposition as \eqn{LD*L^{T}},
+a variant of the classical Cholesky decomposition, where \eqn{L} is a \eqn{D \times D}
+lower unit triangular matrix and \eqn{D*} is a \eqn{D \times D} diagonal matrix.
+The Cholesky correlation factor \eqn{L} is assigned a LKJ prior with \eqn{\epsilon} degrees of freedom,  which,
 combined with priors on the standard deviations of each component, induces a prior on the covariance matrix;
-as \eqn{\eta \rightarrow \infty} the magnitude of correlations between components decreases,
-whereas \eqn{\eta=1} leads to a uniform prior distribution for \eqn{L}.
-By default, the hyperparameters are \eqn{\bm{\mu}_0=\bm{0}}, \eqn{\sigma_d=2.5, \eta=1}.
+as \eqn{\epsilon \rightarrow \infty} the magnitude of correlations between components decreases,
+whereas \eqn{\epsilon=1} leads to a uniform prior distribution for \eqn{L}.
+By default, the hyperparameters are \eqn{\bm{\mu}_0=\bm{0}}, \eqn{\sigma_d=2.5, \epsilon=1}.
 The user may propose some different values with the argument:
 
 
-\code{priors=list(mu_0=c(1,2), sigma_d = 4, eta =2)}
+\code{priors=list(mu_0=c(1,2), sigma_d = 4, epsilon =2)}
 
 
 If \code{software="rjags"} the function performs JAGS sampling using the \code{bayesmix} package
 for univariate Gaussian mixtures, and the \code{runjags}
-package for bivariate Gaussian mixtures. If \code{software="rstan"} the function performs
+package for multivariate Gaussian mixtures. If \code{software="rstan"} the function performs
 Hamiltonian Monte Carlo (HMC) sampling via the \code{rstan} package (see the vignette and the Stan project
 for any help).
 
@@ -215,15 +217,15 @@ number of groups \code{k}.
 \dontrun{
 N   <- 200
 k   <- 4
+D   <- 2
 nMC <- 1000
-M1  <-c(-.5,8)
+M1  <- c(-.5,8)
 M2  <- c(25.5,.1)
 M3  <- c(49.5,8)
 M4  <- c(63.0,.1)
-Mu  <- matrix(rbind(M1,M2,M3,M4),c(4,2))
-sds <- cbind(rep(1,k), rep(20,k))
-Sigma.p1 <- matrix(c(sds[1,1]^2,0,0,sds[1,1]^2), nrow=2, ncol=2)
-Sigma.p2 <- matrix(c(sds[1,2]^2,0,0,sds[1,2]^2), nrow=2, ncol=2)
+Mu  <- rbind(M1,M2,M3,M4)
+Sigma.p1 <- diag(D)
+Sigma.p2 <- 20*diag(D)
 W <- c(0.2,0.8)
 sim <- piv_sim(N = N, k = k, Mu = Mu,
                Sigma.p1 = Sigma.p1,
@@ -249,6 +251,7 @@ res2 <- piv_MCMC(y = sim$y,
 ### Fishery data (bayesmix package)
 
 \dontrun{
+library(bayesmix)
 data(fish)
 y <- fish[,1]
 k <- 5

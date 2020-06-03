@@ -6,6 +6,7 @@ knitr::opts_chunk$set(
 
 ## ----load, warning =FALSE, message=FALSE---------------------------------
 library(pivmet)
+library(mvtnorm)
 
 ## ----mus, echo =TRUE, eval = TRUE, message = FALSE, warning = FALSE------
 #generate some data
@@ -20,9 +21,9 @@ x  <- matrix(NA, n,2)
 truegroup <- c( rep(1,n1), rep(2, n2), rep(3, n3))
 
 
-x[1:n1,]=rmvnorm(n1, c(1,5), sigma=diag(2))
-x[(n1+1):(n1+n2),]=rmvnorm(n2, c(4,0), sigma=diag(2))
-x[(n1+n2+1):(n1+n2+n3),]=rmvnorm(n3,c(6,6),sigma=diag(2))
+x[1:n1,] <- rmvnorm(n1, c(1,5), sigma=diag(2))
+x[(n1+1):(n1+n2),] <- rmvnorm(n2, c(4,0), sigma=diag(2))
+x[(n1+n2+1):(n1+n2+n3),] <- rmvnorm(n3,c(6,6),sigma=diag(2))
 
 H <- 1000
 a <- matrix(NA, H, n)
@@ -40,13 +41,13 @@ sim_matr <- matrix(1, n,n)
     }
   }
 
-cl <- KMeans(x, centers)$cluster
+cl <- RcmdrMisc::KMeans(x, centers)$cluster
 mus_alg <- MUS(C = sim_matr, clusters = cl, prec_par = 5)
 
 
 
 ## ----kmeans, echo =FALSE, fig.show='hold', eval = TRUE, message = FALSE, warning = FALSE----
- kmeans_res <- KMeans(x, centers)
+ kmeans_res <- RcmdrMisc::KMeans(x, centers)
 
 ## ----kmeans_plots, echo =FALSE, fig.show='hold', eval = TRUE, message = FALSE, warning = FALSE----
 

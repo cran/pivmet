@@ -1,8 +1,8 @@
 Package: pivmet
 Type: Package
 Title: Pivotal Methods for Bayesian Relabelling and k-Means Clustering
-Version: 0.2.0
-Date: 2019-06-23
+Version: 0.3.0
+Date: 2020-06-01
 Author: Leonardo Egidi[aut, cre], 
         Roberta Pappadà[aut], 
         Francesco Pauli[aut], 
@@ -21,13 +21,14 @@ Encoding: UTF-8
 LazyData: true
 LazyLoad: yes
 SystemRequirements: pandoc (>= 1.12.3), pandoc-citeproc
-Depends: bayesmix, rjags, mvtnorm, RcmdrMisc
-Imports: cluster, mclust, MASS, corpcor, runjags, rstan
+Depends: R (>= 3.1.0)
+Imports: cluster, mclust, MASS, corpcor, runjags, rstan, bayesmix,
+        rjags, mvtnorm, RcmdrMisc, bayesplot
 Suggests: knitr, rmarkdown
 VignetteBuilder: knitr
-RoxygenNote: 6.1.0
+RoxygenNote: 7.1.0
 BuildManual: yes
 NeedsCompilation: no
-Packaged: 2019-06-24 16:34:12 UTC; leoeg
+Packaged: 2020-06-03 15:34:32 UTC; leoeg
 Repository: CRAN
-Date/Publication: 2019-06-24 16:50:03 UTC
+Date/Publication: 2020-06-03 16:00:03 UTC

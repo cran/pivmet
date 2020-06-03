@@ -4,9 +4,10 @@
 \alias{piv_KMeans}
 \title{k-means Clustering Using Pivotal Algorithms For Seeding}
 \usage{
-piv_KMeans(x, centers, alg.type = "KMeans", method = "average",
-  piv.criterion = c("MUS", "maxsumint", "minsumnoint", "maxsumdiff"),
-  H = 1000, iter.max = 10, num.seeds = 10, prec_par = 10)
+piv_KMeans(x, centers, alg.type = c("KMeans", "hclust"),
+  method = "average", piv.criterion = c("MUS", "maxsumint",
+  "minsumnoint", "maxsumdiff"), H = 1000, iter.max = 10,
+  num.seeds = 10, prec_par = 10)
 }
 \arguments{
 \item{x}{A \eqn{N \times D} data matrix, or an object that can be coerced to such a matrix (such as a numeric vector or a dataframe with all numeric columns).}
@@ -81,9 +82,9 @@ n3 <- 500
 x  <- matrix(NA, N,2)
 truegroup <- c( rep(1,n1), rep(2, n2), rep(3, n3))
 
- x[1:n1,]=rmvnorm(n1, c(1,5), sigma=diag(2))
- x[(n1+1):(n1+n2),]=rmvnorm(n2, c(4,0), sigma=diag(2))
- x[(n1+n2+1):(n1+n2+n3),]=rmvnorm(n3, c(6,6), sigma=diag(2))
+ x[1:n1,] <- rmvnorm(n1, c(1,5), sigma=diag(2))
+ x[(n1+1):(n1+n2),] <- rmvnorm(n2, c(4,0), sigma=diag(2))
+ x[(n1+n2+1):(n1+n2+n3),] <- rmvnorm(n3, c(6,6), sigma=diag(2))
 
 # Apply piv_KMeans with MUS as pivotal criterion
 
