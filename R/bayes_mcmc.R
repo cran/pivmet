@@ -2,14 +2,14 @@
 #'
 #' Perform MCMC JAGS sampling or HMC Stan sampling for Gaussian mixture models, post-process the chains and apply a clustering technique to the MCMC sample. Pivotal units for each group are selected among four alternative criteria.
 #' @param y \eqn{N}-dimensional vector for univariate data or
-#' \eqn{N \times D} matrix for bivariate data.
+#' \eqn{N \times D} matrix for multivariate data.
 #' @param k Number of mixture components.
 #' @param nMC Number of MCMC iterations for the JAGS/Stan function execution.
 #' @param priors Input prior hyperparameters (see Details for default options).
 #' @param piv.criterion The pivotal criterion used for identifying one pivot
 #' for each group. Possible choices are: \code{"MUS", "maxsumint", "minsumnoint",
 #' "maxsumdiff"}.
-#' The default method is \code{"maxsumdiff"} (see the Details and
+#' The default method is \code{"maxsumint"} (see the Details and
 #' the vignette).
 #' @param clustering The algorithm adopted for partitioning the
 #' \eqn{N} observations into \code{k} groups. Possible choices are \code{"diana"} (default) or
@@ -266,7 +266,7 @@ piv_MCMC <- function(y,
 
   # piv.criterion
   if (missing(piv.criterion)){
-    piv.criterion <- "maxsumdiff"
+    piv.criterion <- "maxsumint"
   }
   list_crit <- c("MUS", "maxsumint", "minsumnoint", "maxsumdiff")
   piv.criterion <- match.arg(piv.criterion, list_crit)
@@ -300,7 +300,7 @@ piv_MCMC <- function(y,
     N <- length(y)
     # Initial values
     mu_inits<- c()
-    clust_inits <- kmeans(y, k)$cluster
+    clust_inits <- kmeans(y, k, nstart = 10)$cluster
     for (j in 1:k){
       mu_inits[j]<-mean(y[clust_inits==j])
     }
@@ -532,12 +532,10 @@ piv_MCMC <- function(y,
 
       if (sum(numeffettivogruppi==k)==0){
         return(print("HMC has not never been able to identify the required number of groups and the process has been interrupted"))
-        #return(1)
       }
 
       ##saved in the output
       ris_prel <- as.matrix(fit_univ)
-      #[-(1:burn),]
       ris <- ris_prel[numeffettivogruppi==k,]
       group <- group[numeffettivogruppi==k,]
       mu <- mu[numeffettivogruppi==k,]
@@ -561,9 +559,10 @@ piv_MCMC <- function(y,
     cont <- 0
     for (verogruppo in verigruppi){
       cont <- cont+1
-      group.orig[group==verogruppo] <- cont          #aggiorna contatore pivot
+      # update pivot counter
+      group.orig[group==verogruppo] <- cont
     }
-    cont                                           #qualche dubbio su sta parte
+    cont
 
     k.orig <- k
     if (cont>1){
@@ -605,8 +604,7 @@ piv_MCMC <- function(y,
     N <- dim(y)[1]
     D <- dim(y)[2]
     # Parameters' initialization
-    clust_inits <- KMeans(y, k)$cluster
-    #cutree(hclust(dist(y), "average"),k)
+    clust_inits <- kmeans(y, k, nstart = 10)$cluster
     mu_inits <- matrix(0,k,D)
     for (j in 1:k){
       for (d in 1:D){
@@ -722,14 +720,12 @@ piv_MCMC <- function(y,
 
       if (sum(numeffettivogruppi==k)==0){
         return(print("MCMC has not never been able to identify the required number of groups and the process has been interrupted"))
-        #return(1)
       }else{
         L<-list()
         mu_pre_switch <- array(rep(0, true.iter*D*k), dim=c(true.iter,D,k))
         for (i in 1:k){
           L[[i]] <- ris[,grep(paste("mu[", i, sep=""),
                                     colnames(ris),fixed=TRUE)]
-          #[,c(i,i+k)]
         }
         for (i in 1:k){
           mu_pre_switch[,,i] <- as.matrix(L[[i]])
@@ -856,7 +852,6 @@ piv_MCMC <- function(y,
 
       if (sum(numeffettivogruppi==k)==0){
         return(print("HMC has not never been able to identify the required number of groups and the process has been interrupted"))
-        #return(1)
       }else{
 
         mu_pre_switch <- array(rep(0, true.iter*D*k), dim=c(true.iter,D,k))
@@ -875,15 +870,12 @@ piv_MCMC <- function(y,
       FreqGruppiJags <- table(group)
 
       model_code <- mix_biv
-
-
     }
 
     group.orig <- group
     verigruppi <- as.double(names(table(group)))
     prob.st <- prob.st[,verigruppi]
     mu <- mu[,,verigruppi]
-    #tau <- tau[,verigruppi]
 
     # Switching Post
     cont <- 0
@@ -931,7 +923,7 @@ piv_MCMC <- function(y,
   # Similarity matrix based on MCMC sampling------------------------
   nz <- dim(z)[1]
   M <- dim(z)[3]
-  C <- matrix(1,nz,nz)
+  C <- matrix(NA,nz,nz)
   zm <- apply(z,c(1,3),FUN=function(x) sum(x*(1:length(x))))
 
   for (i in 1:(nz-1)){
@@ -946,7 +938,6 @@ piv_MCMC <- function(y,
   # Clustering on dissimilarity matrix-------------
 
   if (missing(clustering)){
-    #clustering <- "diana"
     gr  <- diana(matdissim,diss=TRUE)
     grr <- cutree(gr, k)
   }else if(clustering =="diana"){
@@ -963,7 +954,7 @@ piv_MCMC <- function(y,
                              "maxsumdiff")
 
   if (missing(piv.criterion)){
-    piv.criterion <- "maxsumdiff"
+    piv.criterion <- "maxsumint"
   }
 
   if (piv.criterion=="maxsumint"||
@@ -984,7 +975,7 @@ piv_MCMC <- function(y,
 
     }else{
 
-      print("maxsumdiff criterion instead of MUS has been adopted due to
+      print("maxsumint criterion instead of MUS has been adopted due to
           computational efficiency")
       clust  <-  piv_sel(C=C,  clusters=as.vector(grr))
       pivots <- clust$pivots[,3]
@@ -998,9 +989,7 @@ piv_MCMC <- function(y,
 
 
   return(list( true.iter = true.iter,
-               #z=z,
                Mu = mu_inits,
-               #ris=ris,
                groupPost=group,
                mcmc_mean = mcmc_mean,
                mcmc_sd = mcmc_sd,
@@ -1011,7 +1000,6 @@ piv_MCMC <- function(y,
                C=C,
                grr=grr,
                pivots = pivots,
-               #print = printed,
                model = model_code,
                k = k,
                stanfit = stanfit))
