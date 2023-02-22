@@ -20,6 +20,7 @@
 #' @param chains A positive integer specifying the number of Markov chains. The default is 4.
 #' @param cores The number of cores to use when executing the Markov chains in parallel (only if
 #' \code{software="rstan"}). Default is 1.
+#' @param sparsity Allows for sparse finite mixtures, default is \code{FALSE}.
 #'
 #' @details
 #' The function fits univariate and multivariate Bayesian Gaussian mixture models of the form
@@ -260,7 +261,8 @@ piv_MCMC <- function(y,
                      software = c("rjags", "rstan"),
                      burn =0.5*nMC,
                      chains = 4,
-                     cores = 1){
+                     cores = 1,
+                     sparsity = FALSE){
 
   #### checks
 
@@ -305,15 +307,19 @@ piv_MCMC <- function(y,
       mu_inits[j]<-mean(y[clust_inits==j])
     }
     if (software=="rjags"){
+      priors_input <- list(kind = "independence",
+                           parameter = "priorsFish",
+                           hierarchical = "tau")
       if (missing(priors)){
         # b0 = 0; B0inv =0.1; nu0Half =5;
         # g0Half = 1e-17; g0G0Half = 1e16;
         # e = rep(1,k); S0 =2
         # priors =  list( "b0" , "B0inv" , "nu0Half",
         #                 "g0Half", "g0G0Half", "e", "S0")
-        priors=list(kind = "independence",
-                    parameter = "priorsFish",
-                    hierarchical = "tau")
+
+        mod.mist.univ <- BMMmodel(y, k = k,
+                                  initialValues = list(S0 = 2),
+                                  priors = priors_input)
       }else{
         if (is.null(priors$mu_0)){
           b0 <- median(as.matrix(y))
@@ -346,7 +352,7 @@ piv_MCMC <- function(y,
         }
 
         if (is.null(priors$alpha)){
-          e <- rep(1,k)
+          e <- rep(0.001,k)
         }else{
           e <- priors$alpha
         }
@@ -359,22 +365,16 @@ piv_MCMC <- function(y,
 
 
         nu0S0Half = nu0Half*S0
-
-        priors <-  BMMpriors(list(kind = "independence",
-                                  parameter= list(b0 = b0,
-                                                  B0inv = B0inv,
-                                                  nu0 = 2*nu0Half,
-                                                  g0Half = g0Half,
-                                                  g0G0Half = g0G0Half
-                                                  #,
-                                                  #nu0S0Half = nu0S0Half,
-                                                  #S0 = 2
-                                  ),
-                                  hierarchical = "tau"),
-                             y, 1-16)
-        priors$var$g0Half <- g0Half
-        priors$var$g0G0Half <- g0G0Half
-        #priors$var$nu0S0Half <- S0*nu0Half
+        mod.mist.univ <- BMMmodel(y, k = k,
+                                  initialValues = list(S0 = 2),
+                                  priors = priors_input)
+        #prior's values redefinition
+        mod.mist.univ$data$b0 <- b0
+        mod.mist.univ$data$B0inv <- B0inv
+        mod.mist.univ$data$nu0Half <- nu0Half
+        mod.mist.univ$data$g0Half <- g0Half
+        mod.mist.univ$data$g0G0Half <- g0G0Half
+        mod.mist.univ$data$e <- e
 
       }
 
@@ -382,9 +382,7 @@ piv_MCMC <- function(y,
 
       # Data
       # Model
-      mod.mist.univ <- BMMmodel(y, k = k,
-                                initialValues = list(S0 = 2),
-                                priors = priors)
+
       control <- JAGScontrol(variables = c("mu", "tau", "eta", "S"),
                              burn.in = burn, n.iter = nMC, seed = 10)
       ogg.jags <- JAGSrun(y, model = mod.mist.univ, control = control)
@@ -405,11 +403,14 @@ piv_MCMC <- function(y,
       tau <- 1/mcmc.pars[,,2]
       prob.st <- mcmc.pars[,,3]
       group <-  ogg.jags$results[-(1:burn), 1:N] #gruppi
+      group_for_nclusters <- group
       FreqGruppiJags <- table(group)
       numeffettivogruppi <- apply(group,1,FUN = function(x) length(unique(x)))
 
       if (sum(numeffettivogruppi==k)==0){
-        return(print("MCMC has not never been able to identify the required number of groups and the process has been interrupted"))
+        print("MCMC has not never been able to identify the required number of groups and the process has been interrupted")
+        return(list(nclusters = numeffettivogruppi))
+
         #return(1)
       }
 
@@ -433,6 +434,8 @@ piv_MCMC <- function(y,
         B0inv <- 0.1
         mu_sigma <- 0
         tau_sigma <- 2
+        a_sp <- 1
+        b_sp <- 200
       }else{
         if (is.null(priors$mu_0)){
           mu_0 <- 0
@@ -454,11 +457,25 @@ piv_MCMC <- function(y,
         }else{
           tau_sigma <- priors$tau_sigma
         }
+        if (is.null(priors$a_sp)){
+          a_sp <- 1
+        }else{
+          a_sp <- priors$a_sp
+        }
+        if (is.null(priors$b_sp)){
+          b_sp <- 200
+        }else{
+          b_sp <- priors$b_sp
+        }
       }
 
       data = list(N=N, y=y, k=k,
                   mu_0=mu_0, B0inv=B0inv,
-                  mu_sigma=mu_sigma, tau_sigma=tau_sigma)
+                  mu_sigma=mu_sigma, tau_sigma=tau_sigma,
+                  a=a_sp, b=b_sp)
+      # sparsity
+      if (sparsity == FALSE){
+
       mix_univ <-"
         data {
           int<lower=1> k;          // number of mixture components
@@ -505,12 +522,71 @@ piv_MCMC <- function(y,
             }
       }
       "
+      }else{
+      mix_univ <-"
+      data {
+        int<lower=1> k;          // number of mixture components
+        int<lower=1> N;          // number of data points
+        real y[N];               // observations
+        real mu_0;               // mean hyperparameter
+        real<lower=0> B0inv;     // mean hyperprecision
+        real mu_sigma;           // sigma hypermean
+        real<lower=0> tau_sigma; // sigma hyper sd
+        real<lower=0> a;         // hyper-shape gamma e0
+        real<lower=0> b;         // hyper-rate gamma e0
+      }
+      parameters {
+        simplex[k] eta;             // mixing proportions
+        ordered[k] mu;              // locations of mixture components
+        vector<lower=0>[k] sigma;   // scales of mixture components
+        real<lower=0> e0;
+      }
+      transformed parameters{
+        vector[k] log_eta = log(eta);  // cache log calculation
+        vector<lower=0>[k] alpha = rep_vector(e0, k);
+        vector[k] pz[N];
+        simplex[k] exp_pz[N];
+        for (n in 1:N){
+          pz[n] =   normal_lpdf(y[n]|mu, sigma)+
+            log_eta-
+            log_sum_exp(normal_lpdf(y[n]|mu, sigma)+
+                          log_eta);
+          exp_pz[n] = exp(pz[n]);
+        }
+      }
+      model {
+        sigma ~ lognormal(mu_sigma, tau_sigma);
+        mu ~ normal(mu_0, 1/B0inv);
+        eta ~ dirichlet(alpha);
+        e0 ~ gamma(a, b);
+        for (n in 1:N) {
+          vector[k] lps = log_eta;
+          for (j in 1:k){
+            lps[j] += normal_lpdf(y[n] | mu[j], sigma[j]);
+            target+=pz[n,j];
+          }
+          target += log_sum_exp(lps);
+        }
+      }
+      generated quantities{
+        int<lower=1, upper=k> z[N];
+        for (n in 1:N){
+          z[n] = categorical_rng(exp_pz[n]);
+        }
+      }
+      "
+      }
+
       fit_univ <-  stan(model_code = mix_univ,
                         data=data,
                         chains =chains,
                         iter =nMC)
       stanfit <- fit_univ
-      printed <- cat(print(fit_univ, pars =c("mu", "eta", "sigma")))
+      if (sparsity==FALSE){
+        printed <- cat(print(fit_univ, pars =c("mu", "eta", "sigma")))
+      }else{
+        printed <- cat(print(fit_univ, pars =c("mu", "eta", "sigma", "e0")))
+      }
       sims_univ <- rstan::extract(fit_univ)
 
       J <- 3
@@ -527,11 +603,14 @@ piv_MCMC <- function(y,
       tau <- mcmc.pars[,,2]
       prob.st <- mcmc.pars[,,3]
       group <-  sims_univ$z[, 1:N] #gruppi
+      group_for_nclusters <- group
       FreqGruppiJags <- table(group)
       numeffettivogruppi <- apply(group,1,FUN = function(x) length(unique(x)))
 
       if (sum(numeffettivogruppi==k)==0){
-        return(print("HMC has not never been able to identify the required number of groups and the process has been interrupted"))
+        print("MCMC has not never been able to identify the required number of groups and the process has been interrupted")
+        return(list(nclusters = numeffettivogruppi))
+
       }
 
       ##saved in the output
@@ -600,6 +679,7 @@ piv_MCMC <- function(y,
     mcmc_weight <- prob.st_switch
 
 
+
   }else if (is.matrix(y)){
     N <- dim(y)[1]
     D <- dim(y)[2]
@@ -624,6 +704,8 @@ piv_MCMC <- function(y,
         S2 <- diag(D)/100000
         S3 <- diag(D)/100000
         alpha <- rep(1,k)
+        a_sp <-1
+        b_sp <- 200
       }else{
         if (is.null(priors$mu_0)){
           mu_0 <- rep(0, D)
@@ -645,14 +727,25 @@ piv_MCMC <- function(y,
         }else{
           alpha <- priors$alpha
         }
+        if (is.null(priors$a_sp)){
+          a_sp <- 1
+        }else{
+          a_sp <- priors$a_sp
+        }
+        if (is.null(priors$b_sp)){
+          b_sp <- 200
+        }else{
+          b_sp <- priors$b_sp
+        }
       }
 
-      # Data
-      dati.biv <- list(y = y, N = N, k = k, D = D,
-                       S2= S2, S3= S3, mu_0=mu_0,
-                       alpha = alpha)
-
       # Model
+      if (sparsity ==FALSE){
+
+        # Data
+        dati.biv <- list(y = y, N = N, k = k, D = D,
+                         S2= S2, S3= S3, mu_0=mu_0,
+                         alpha = alpha)
       mod.mist.biv<-"model{
     # Likelihood:
 
@@ -670,6 +763,33 @@ piv_MCMC <- function(y,
       Sigma[1:D,1:D] <- inverse(tau[,])
       eta[1:k] ~ ddirch(alpha)
   }"
+      }else{
+
+        # Data
+        dati.biv <- list(y = y, N = N, k = k, D = D,
+                         S2= S2, S3= S3, mu_0=mu_0,
+                         a = a_sp, b=b_sp)
+        mod.mist.biv<-"model{
+      # Likelihood:
+
+      for (i in 1:N){
+        yprev[i,1:D]<-y[i,1:D]
+        y[i,1:D] ~ dmnorm(mu[clust[i],],tau)
+        clust[i] ~ dcat(eta[1:k] )
+      }
+
+      # Prior:
+
+      for (g in 1:k) {
+        mu[g,1:D] ~ dmnorm(mu_0[],S2[,])
+        alpha[g] <- e0}
+        tau[1:D,1:D] ~ dwish(S3[,],D+1)
+        Sigma[1:D,1:D] <- inverse(tau[,])
+        eta[1:k] ~ ddirch(alpha)
+        e0 ~ dgamma(a, b)
+    }"
+
+      }
 
       init1.biv <- list()
       for (s in 1:chains){
@@ -677,7 +797,7 @@ piv_MCMC <- function(y,
                                     tau= 15*diag(D),
                                     eta=rep(1/k,k), clust=clust_inits))
       }
-      moni.biv <- c("clust","mu","tau","eta")
+      moni.biv <- c("clust","mu","tau","eta", "e0")
 
       mod   <- mod.mist.biv
       dati  <- dati.biv
@@ -696,7 +816,7 @@ piv_MCMC <- function(y,
 
       # Post- process of the chains----------------------
       group <- ris[-(1:burn),grep("clust[",colnames(ris),fixed=TRUE)]
-
+      group_for_nclusters <- group
       # only the variances
       tau <- sqrt( (1/ris[-(1:burn),grep("tau[",colnames(ris),fixed=TRUE)])[,c(1,4)])
       prob.st <- ris[-(1:burn),grep("eta[",colnames(ris),fixed=TRUE)]
@@ -719,7 +839,8 @@ piv_MCMC <- function(y,
       true.iter <- nrow(ris)
 
       if (sum(numeffettivogruppi==k)==0){
-        return(print("MCMC has not never been able to identify the required number of groups and the process has been interrupted"))
+        print("MCMC has not never been able to identify the required number of groups and the process has been interrupted")
+        return(list(nclusters = numeffettivogruppi))
       }else{
         L<-list()
         mu_pre_switch <- array(rep(0, true.iter*D*k), dim=c(true.iter,D,k))
@@ -750,6 +871,8 @@ piv_MCMC <- function(y,
         mu_0 <- rep(0, D)
         epsilon <- 1
         sigma_d <- 2.5
+        a_sp <- 1
+        b_sp <- 200
       }else{
         if (is.null(priors$mu_0)){
           mu_0 <- rep(0, D)
@@ -766,9 +889,22 @@ piv_MCMC <- function(y,
         }else{
           sigma_d <- priors$sigma_d
         }
+        if (is.null(priors$a_sp)){
+          a_sp <- 1
+        }else{
+          a_sp <- priors$a_sp
+        }
+        if (is.null(priors$b_sp)){
+          b_sp <- 200
+        }else{
+          b_sp <- priors$b_sp
+        }
       }
       data =list(N=N, k=k, y=y, D=D, mu_0=mu_0,
-                 epsilon = epsilon, sigma_d = sigma_d)
+                 epsilon = epsilon, sigma_d = sigma_d,
+                 a = a_sp, b=b_sp)
+      # sparsity
+      if (sparsity=="FALSE"){
       mix_biv <- "
         data {
           int<lower=1> k;          // number of mixture components
@@ -825,12 +961,82 @@ piv_MCMC <- function(y,
                 }
           }
           "
+      }else{
+        mix_biv <- "
+        data {
+          int<lower=1> k;          // number of mixture components
+          int<lower=1> N;          // number of data points
+          int D;                   // data dimension
+          matrix[N,D] y;           // observations matrix
+          vector[D] mu_0;
+          real<lower=0> epsilon;
+          real<lower=0> sigma_d;
+          real<lower=0> a;         // hyper-shape gamma e0
+          real<lower=0> b;         // hyper-rate gamma e0
+        }
+        parameters {
+          simplex[k] eta;         // mixing proportions
+          vector[D] mu[k];        // locations of mixture components
+          cholesky_factor_corr[D] L_Omega;   // scales of mixture components
+          vector<lower=0>[D] L_sigma;
+          cholesky_factor_corr[D] L_tau_Omega;   // scales of mixture components
+          vector<lower=0>[D] L_tau;
+          real<lower=0> e0;       // dirichlet concentration
+          }
+        transformed parameters{
+          vector[k] log_eta = log(eta);  // cache log calculation
+          vector<lower=0>[k] alpha = rep_vector(e0, k);
+          vector[k] pz[N];
+          simplex[k] exp_pz[N];
+          matrix[D,D] L_Sigma=diag_pre_multiply(L_sigma, L_Omega);
+          matrix[D,D] L_Tau=diag_pre_multiply(L_tau, L_tau_Omega);
+
+
+            for (n in 1:N){
+                pz[n]=   multi_normal_cholesky_lpdf(y[n]|mu, L_Sigma)+
+                         log_eta-
+                         log_sum_exp(multi_normal_cholesky_lpdf(y[n]|
+                                                     mu, L_Sigma)+
+                         log_eta);
+                exp_pz[n] = exp(pz[n]);
+              }
+          }
+        model{
+          L_Omega ~ lkj_corr_cholesky(epsilon);
+          L_sigma ~ cauchy(0, sigma_d);
+          mu ~ multi_normal_cholesky(mu_0, L_Tau);
+          eta ~ dirichlet(alpha);
+          e0 ~ gamma(a, b);
+            for (n in 1:N) {
+              vector[k] lps = log_eta;
+                for (j in 1:k){
+                    lps[j] += multi_normal_cholesky_lpdf(y[n] |
+                                                   mu[j], L_Sigma);
+                    target+=pz[n,j];
+                }
+              target += log_sum_exp(lps);
+          }
+          }
+        generated quantities{
+          int<lower=1, upper=k> z[N];
+              for (n in 1:N){
+                  z[n] = categorical_rng(exp_pz[n]);
+                }
+          }
+          "
+
+
+      }
       fit_biv <-  stan(model_code = mix_biv,
                        data=data,
                        chains =chains,
                        iter =nMC)
       stanfit <- fit_biv
-      printed <- cat(print(fit_biv, pars=c("mu", "eta", "L_Sigma")))
+      if (sparsity == FALSE){
+        printed <- cat(print(fit_biv, pars=c("mu", "eta", "L_Sigma")))
+      }else{
+        printed <- cat(print(fit_biv, pars=c("mu", "eta", "L_Sigma", "e0")))
+      }
       sims_biv <- rstan::extract(fit_biv)
 
       # Extraction
@@ -838,6 +1044,7 @@ piv_MCMC <- function(y,
 
       # Post- process of the chains----------------------
       group <- sims_biv$z
+      group_for_nclusters <- group
       tau <- sims_biv$L_sigma
       prob.st <- sims_biv$eta
       M <- nrow(group)
@@ -851,7 +1058,8 @@ piv_MCMC <- function(y,
       true.iter <- dim(sm)[1]
 
       if (sum(numeffettivogruppi==k)==0){
-        return(print("HMC has not never been able to identify the required number of groups and the process has been interrupted"))
+        print("MCMC has not never been able to identify the required number of groups and the process has been interrupted")
+        return(list(nclusters = numeffettivogruppi))
       }else{
 
         mu_pre_switch <- array(rep(0, true.iter*D*k), dim=c(true.iter,D,k))
@@ -911,6 +1119,7 @@ piv_MCMC <- function(y,
     mcmc_mean <- mu_switch
     mcmc_sd <- tau
     mcmc_weight <- prob.st_switch
+
 
   }
 
@@ -1002,5 +1211,6 @@ piv_MCMC <- function(y,
                pivots = pivots,
                model = model_code,
                k = k,
-               stanfit = stanfit))
+               stanfit = stanfit,
+               nclusters = numeffettivogruppi))
 }

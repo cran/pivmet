@@ -75,3 +75,11 @@ piv_plot(y=y, res, rel, type="hist")
 ## ----model_code---------------------------------------------------------------
 cat(res$model)
 
+## ----sparsity,   message =FALSE, warning = FALSE------------------------------
+res3 <- piv_MCMC(y = y, k = k, nMC = nMC, sparsity = TRUE,
+                 priors = list(alpha = rep(0.001, k))) # sparse on eta
+barplot(table(res3$nclusters), xlab= expression(K["+"]),
+        col = "blue", border = "red", main = expression(paste("p(",K["+"], "|y)")),
+        cex.main=3, yaxt ="n", cex.axis=2.4, cex.names=2.4,
+        cex.lab=2)
+
