@@ -12,34 +12,46 @@
 
 <meta name="author" content="Leonardo Egidi" />
 
-<meta name="date" content="2023-02-22" />
+<meta name="date" content="2024-05-29" />
 
 <title>K-means clustering using MUS and other pivotal algorithms</title>
 
-<script src="data:application/javascript;base64,Ly8gUGFuZG9jIDIuOSBhZGRzIGF0dHJpYnV0ZXMgb24gYm90aCBoZWFkZXIgYW5kIGRpdi4gV2UgcmVtb3ZlIHRoZSBmb3JtZXIgKHRvCi8vIGJlIGNvbXBhdGlibGUgd2l0aCB0aGUgYmVoYXZpb3Igb2YgUGFuZG9jIDwgMi44KS4KZG9jdW1lbnQuYWRkRXZlbnRMaXN0ZW5lcignRE9NQ29udGVudExvYWRlZCcsIGZ1bmN0aW9uKGUpIHsKICB2YXIgaHMgPSBkb2N1bWVudC5xdWVyeVNlbGVjdG9yQWxsKCJkaXYuc2VjdGlvbltjbGFzcyo9J2xldmVsJ10gPiA6Zmlyc3QtY2hpbGQiKTsKICB2YXIgaSwgaCwgYTsKICBmb3IgKGkgPSAwOyBpIDwgaHMubGVuZ3RoOyBpKyspIHsKICAgIGggPSBoc1tpXTsKICAgIGlmICghL15oWzEtNl0kL2kudGVzdChoLnRhZ05hbWUpKSBjb250aW51ZTsgIC8vIGl0IHNob3VsZCBiZSBhIGhlYWRlciBoMS1oNgogICAgYSA9IGguYXR0cmlidXRlczsKICAgIHdoaWxlIChhLmxlbmd0aCA+IDApIGgucmVtb3ZlQXR0cmlidXRlKGFbMF0ubmFtZSk7CiAgfQp9KTsK"></script>
+<script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
+// be compatible with the behavior of Pandoc < 2.8).
+document.addEventListener('DOMContentLoaded', function(e) {
+  var hs = document.querySelectorAll("div.section[class*='level'] > :first-child");
+  var i, h, a;
+  for (i = 0; i < hs.length; i++) {
+    h = hs[i];
+    if (!/^h[1-6]$/i.test(h.tagName)) continue;  // it should be a header h1-h6
+    a = h.attributes;
+    while (a.length > 0) h.removeAttribute(a[0].name);
+  }
+});
+</script>
 
 <style type="text/css">
-  code{white-space: pre-wrap;}
-  span.smallcaps{font-variant: small-caps;}
-  span.underline{text-decoration: underline;}
-  div.column{display: inline-block; vertical-align: top; width: 50%;}
-  div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
-  ul.task-list{list-style: none;}
-    </style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+span.underline{text-decoration: underline;}
+div.column{display: inline-block; vertical-align: top; width: 50%;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+</style>
 
 
 
 <style type="text/css">
-  code {
-    white-space: pre;
-  }
-  .sourceCode {
-    overflow: visible;
-  }
+code {
+white-space: pre;
+}
+.sourceCode {
+overflow: visible;
+}
 </style>
 <style type="text/css" data-origin="pandoc">
 pre > code.sourceCode { white-space: pre; position: relative; }
-pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span { line-height: 1.25; }
 pre > code.sourceCode > span:empty { height: 1.2em; }
 .sourceCode { overflow: visible; }
 code.sourceCode > span { color: inherit; text-decoration: inherit; }
@@ -53,55 +65,54 @@ pre > code.sourceCode { white-space: pre-wrap; }
 pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
 }
 pre.numberSource code
-  { counter-reset: source-line 0; }
+{ counter-reset: source-line 0; }
 pre.numberSource code > span
-  { position: relative; left: -4em; counter-increment: source-line; }
+{ position: relative; left: -4em; counter-increment: source-line; }
 pre.numberSource code > span > a:first-child::before
-  { content: counter(source-line);
-    position: relative; left: -1em; text-align: right; vertical-align: baseline;
-    border: none; display: inline-block;
-    -webkit-touch-callout: none; -webkit-user-select: none;
-    -khtml-user-select: none; -moz-user-select: none;
-    -ms-user-select: none; user-select: none;
-    padding: 0 4px; width: 4em;
-    color: #aaaaaa;
-  }
-pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+{ content: counter(source-line);
+position: relative; left: -1em; text-align: right; vertical-align: baseline;
+border: none; display: inline-block;
+-webkit-touch-callout: none; -webkit-user-select: none;
+-khtml-user-select: none; -moz-user-select: none;
+-ms-user-select: none; user-select: none;
+padding: 0 4px; width: 4em;
+color: #aaaaaa;
+}
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa; padding-left: 4px; }
 div.sourceCode
-  {   }
+{ }
 @media screen {
 pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
 }
-code span.al { color: #ff0000; font-weight: bold; } /* Alert */
-code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
-code span.at { color: #7d9029; } /* Attribute */
-code span.bn { color: #40a070; } /* BaseN */
-code span.bu { } /* BuiltIn */
-code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
-code span.ch { color: #4070a0; } /* Char */
-code span.cn { color: #880000; } /* Constant */
-code span.co { color: #60a0b0; font-style: italic; } /* Comment */
-code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
-code span.do { color: #ba2121; font-style: italic; } /* Documentation */
-code span.dt { color: #902000; } /* DataType */
-code span.dv { color: #40a070; } /* DecVal */
-code span.er { color: #ff0000; font-weight: bold; } /* Error */
-code span.ex { } /* Extension */
-code span.fl { color: #40a070; } /* Float */
-code span.fu { color: #06287e; } /* Function */
-code span.im { } /* Import */
-code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
-code span.kw { color: #007020; font-weight: bold; } /* Keyword */
-code span.op { color: #666666; } /* Operator */
-code span.ot { color: #007020; } /* Other */
-code span.pp { color: #bc7a00; } /* Preprocessor */
-code span.sc { color: #4070a0; } /* SpecialChar */
-code span.ss { color: #bb6688; } /* SpecialString */
-code span.st { color: #4070a0; } /* String */
-code span.va { color: #19177c; } /* Variable */
-code span.vs { color: #4070a0; } /* VerbatimString */
-code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
-
+code span.al { color: #ff0000; font-weight: bold; } 
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.at { color: #7d9029; } 
+code span.bn { color: #40a070; } 
+code span.bu { color: #008000; } 
+code span.cf { color: #007020; font-weight: bold; } 
+code span.ch { color: #4070a0; } 
+code span.cn { color: #880000; } 
+code span.co { color: #60a0b0; font-style: italic; } 
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.do { color: #ba2121; font-style: italic; } 
+code span.dt { color: #902000; } 
+code span.dv { color: #40a070; } 
+code span.er { color: #ff0000; font-weight: bold; } 
+code span.ex { } 
+code span.fl { color: #40a070; } 
+code span.fu { color: #06287e; } 
+code span.im { color: #008000; font-weight: bold; } 
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.kw { color: #007020; font-weight: bold; } 
+code span.op { color: #666666; } 
+code span.ot { color: #007020; } 
+code span.pp { color: #bc7a00; } 
+code span.sc { color: #4070a0; } 
+code span.ss { color: #bb6688; } 
+code span.st { color: #4070a0; } 
+code span.va { color: #19177c; } 
+code span.vs { color: #4070a0; } 
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } 
 </style>
 <script>
 // apply pandoc div.sourceCode style to pre.sourceCode instead
@@ -135,29 +146,210 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 
 
 <style type="text/css">
-/* for pandoc --citeproc since 2.11 */
+
 div.csl-bib-body { }
 div.csl-entry {
-  clear: both;
+clear: both;
+margin-bottom: 0em;
 }
 .hanging div.csl-entry {
-  margin-left:2em;
-  text-indent:-2em;
+margin-left:2em;
+text-indent:-2em;
 }
 div.csl-left-margin {
-  min-width:2em;
-  float:left;
+min-width:2em;
+float:left;
 }
 div.csl-right-inline {
-  margin-left:2em;
-  padding-left:1em;
+margin-left:2em;
+padding-left:1em;
 }
 div.csl-indent {
-  margin-left: 2em;
+margin-left: 2em;
 }
 </style>
 
-<link rel="stylesheet" href="data:text/css,body%20%7B%0Abackground%2Dcolor%3A%20%23fff%3B%0Amargin%3A%201em%20auto%3B%0Amax%2Dwidth%3A%20700px%3B%0Aoverflow%3A%20visible%3B%0Apadding%2Dleft%3A%202em%3B%0Apadding%2Dright%3A%202em%3B%0Afont%2Dfamily%3A%20%22Open%20Sans%22%2C%20%22Helvetica%20Neue%22%2C%20Helvetica%2C%20Arial%2C%20sans%2Dserif%3B%0Afont%2Dsize%3A%2014px%3B%0Aline%2Dheight%3A%201%2E35%3B%0A%7D%0A%23TOC%20%7B%0Aclear%3A%20both%3B%0Amargin%3A%200%200%2010px%2010px%3B%0Apadding%3A%204px%3B%0Awidth%3A%20400px%3B%0Aborder%3A%201px%20solid%20%23CCCCCC%3B%0Aborder%2Dradius%3A%205px%3B%0Abackground%2Dcolor%3A%20%23f6f6f6%3B%0Afont%2Dsize%3A%2013px%3B%0Aline%2Dheight%3A%201%2E3%3B%0A%7D%0A%23TOC%20%2Etoctitle%20%7B%0Afont%2Dweight%3A%20bold%3B%0Afont%2Dsize%3A%2015px%3B%0Amargin%2Dleft%3A%205px%3B%0A%7D%0A%23TOC%20ul%20%7B%0Apadding%2Dleft%3A%2040px%3B%0Amargin%2Dleft%3A%20%2D1%2E5em%3B%0Amargin%2Dtop%3A%205px%3B%0Amargin%2Dbottom%3A%205px%3B%0A%7D%0A%23TOC%20ul%20ul%20%7B%0Amargin%2Dleft%3A%20%2D2em%3B%0A%7D%0A%23TOC%20li%20%7B%0Aline%2Dheight%3A%2016px%3B%0A%7D%0Atable%20%7B%0Amargin%3A%201em%20auto%3B%0Aborder%2Dwidth%3A%201px%3B%0Aborder%2Dcolor%3A%20%23DDDDDD%3B%0Aborder%2Dstyle%3A%20outset%3B%0Aborder%2Dcollapse%3A%20collapse%3B%0A%7D%0Atable%20th%20%7B%0Aborder%2Dwidth%3A%202px%3B%0Apadding%3A%205px%3B%0Aborder%2Dstyle%3A%20inset%3B%0A%7D%0Atable%20td%20%7B%0Aborder%2Dwidth%3A%201px%3B%0Aborder%2Dstyle%3A%20inset%3B%0Aline%2Dheight%3A%2018px%3B%0Apadding%3A%205px%205px%3B%0A%7D%0Atable%2C%20table%20th%2C%20table%20td%20%7B%0Aborder%2Dleft%2Dstyle%3A%20none%3B%0Aborder%2Dright%2Dstyle%3A%20none%3B%0A%7D%0Atable%20thead%2C%20table%20tr%2Eeven%20%7B%0Abackground%2Dcolor%3A%20%23f7f7f7%3B%0A%7D%0Ap%20%7B%0Amargin%3A%200%2E5em%200%3B%0A%7D%0Ablockquote%20%7B%0Abackground%2Dcolor%3A%20%23f6f6f6%3B%0Apadding%3A%200%2E25em%200%2E75em%3B%0A%7D%0Ahr%20%7B%0Aborder%2Dstyle%3A%20solid%3B%0Aborder%3A%20none%3B%0Aborder%2Dtop%3A%201px%20solid%20%23777%3B%0Amargin%3A%2028px%200%3B%0A%7D%0Adl%20%7B%0Amargin%2Dleft%3A%200%3B%0A%7D%0Adl%20dd%20%7B%0Amargin%2Dbottom%3A%2013px%3B%0Amargin%2Dleft%3A%2013px%3B%0A%7D%0Adl%20dt%20%7B%0Afont%2Dweight%3A%20bold%3B%0A%7D%0Aul%20%7B%0Amargin%2Dtop%3A%200%3B%0A%7D%0Aul%20li%20%7B%0Alist%2Dstyle%3A%20circle%20outside%3B%0A%7D%0Aul%20ul%20%7B%0Amargin%2Dbottom%3A%200%3B%0A%7D%0Apre%2C%20code%20%7B%0Abackground%2Dcolor%3A%20%23f7f7f7%3B%0Aborder%2Dradius%3A%203px%3B%0Acolor%3A%20%23333%3B%0Awhite%2Dspace%3A%20pre%2Dwrap%3B%20%0A%7D%0Apre%20%7B%0Aborder%2Dradius%3A%203px%3B%0Amargin%3A%205px%200px%2010px%200px%3B%0Apadding%3A%2010px%3B%0A%7D%0Apre%3Anot%28%5Bclass%5D%29%20%7B%0Abackground%2Dcolor%3A%20%23f7f7f7%3B%0A%7D%0Acode%20%7B%0Afont%2Dfamily%3A%20Consolas%2C%20Monaco%2C%20%27Courier%20New%27%2C%20monospace%3B%0Afont%2Dsize%3A%2085%25%3B%0A%7D%0Ap%20%3E%20code%2C%20li%20%3E%20code%20%7B%0Apadding%3A%202px%200px%3B%0A%7D%0Adiv%2Efigure%20%7B%0Atext%2Dalign%3A%20center%3B%0A%7D%0Aimg%20%7B%0Abackground%2Dcolor%3A%20%23FFFFFF%3B%0Apadding%3A%202px%3B%0Aborder%3A%201px%20solid%20%23DDDDDD%3B%0Aborder%2Dradius%3A%203px%3B%0Aborder%3A%201px%20solid%20%23CCCCCC%3B%0Amargin%3A%200%205px%3B%0A%7D%0Ah1%20%7B%0Amargin%2Dtop%3A%200%3B%0Afont%2Dsize%3A%2035px%3B%0Aline%2Dheight%3A%2040px%3B%0A%7D%0Ah2%20%7B%0Aborder%2Dbottom%3A%204px%20solid%20%23f7f7f7%3B%0Apadding%2Dtop%3A%2010px%3B%0Apadding%2Dbottom%3A%202px%3B%0Afont%2Dsize%3A%20145%25%3B%0A%7D%0Ah3%20%7B%0Aborder%2Dbottom%3A%202px%20solid%20%23f7f7f7%3B%0Apadding%2Dtop%3A%2010px%3B%0Afont%2Dsize%3A%20120%25%3B%0A%7D%0Ah4%20%7B%0Aborder%2Dbottom%3A%201px%20solid%20%23f7f7f7%3B%0Amargin%2Dleft%3A%208px%3B%0Afont%2Dsize%3A%20105%25%3B%0A%7D%0Ah5%2C%20h6%20%7B%0Aborder%2Dbottom%3A%201px%20solid%20%23ccc%3B%0Afont%2Dsize%3A%20105%25%3B%0A%7D%0Aa%20%7B%0Acolor%3A%20%230033dd%3B%0Atext%2Ddecoration%3A%20none%3B%0A%7D%0Aa%3Ahover%20%7B%0Acolor%3A%20%236666ff%3B%20%7D%0Aa%3Avisited%20%7B%0Acolor%3A%20%23800080%3B%20%7D%0Aa%3Avisited%3Ahover%20%7B%0Acolor%3A%20%23BB00BB%3B%20%7D%0Aa%5Bhref%5E%3D%22http%3A%22%5D%20%7B%0Atext%2Ddecoration%3A%20underline%3B%20%7D%0Aa%5Bhref%5E%3D%22https%3A%22%5D%20%7B%0Atext%2Ddecoration%3A%20underline%3B%20%7D%0A%0Acode%20%3E%20span%2Ekw%20%7B%20color%3A%20%23555%3B%20font%2Dweight%3A%20bold%3B%20%7D%20%0Acode%20%3E%20span%2Edt%20%7B%20color%3A%20%23902000%3B%20%7D%20%0Acode%20%3E%20span%2Edv%20%7B%20color%3A%20%2340a070%3B%20%7D%20%0Acode%20%3E%20span%2Ebn%20%7B%20color%3A%20%23d14%3B%20%7D%20%0Acode%20%3E%20span%2Efl%20%7B%20color%3A%20%23d14%3B%20%7D%20%0Acode%20%3E%20span%2Ech%20%7B%20color%3A%20%23d14%3B%20%7D%20%0Acode%20%3E%20span%2Est%20%7B%20color%3A%20%23d14%3B%20%7D%20%0Acode%20%3E%20span%2Eco%20%7B%20color%3A%20%23888888%3B%20font%2Dstyle%3A%20italic%3B%20%7D%20%0Acode%20%3E%20span%2Eot%20%7B%20color%3A%20%23007020%3B%20%7D%20%0Acode%20%3E%20span%2Eal%20%7B%20color%3A%20%23ff0000%3B%20font%2Dweight%3A%20bold%3B%20%7D%20%0Acode%20%3E%20span%2Efu%20%7B%20color%3A%20%23900%3B%20font%2Dweight%3A%20bold%3B%20%7D%20%0Acode%20%3E%20span%2Eer%20%7B%20color%3A%20%23a61717%3B%20background%2Dcolor%3A%20%23e3d2d2%3B%20%7D%20%0A" type="text/css" />
+<style type="text/css">body {
+background-color: #fff;
+margin: 1em auto;
+max-width: 700px;
+overflow: visible;
+padding-left: 2em;
+padding-right: 2em;
+font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+font-size: 14px;
+line-height: 1.35;
+}
+#TOC {
+clear: both;
+margin: 0 0 10px 10px;
+padding: 4px;
+width: 400px;
+border: 1px solid #CCCCCC;
+border-radius: 5px;
+background-color: #f6f6f6;
+font-size: 13px;
+line-height: 1.3;
+}
+#TOC .toctitle {
+font-weight: bold;
+font-size: 15px;
+margin-left: 5px;
+}
+#TOC ul {
+padding-left: 40px;
+margin-left: -1.5em;
+margin-top: 5px;
+margin-bottom: 5px;
+}
+#TOC ul ul {
+margin-left: -2em;
+}
+#TOC li {
+line-height: 16px;
+}
+table {
+margin: 1em auto;
+border-width: 1px;
+border-color: #DDDDDD;
+border-style: outset;
+border-collapse: collapse;
+}
+table th {
+border-width: 2px;
+padding: 5px;
+border-style: inset;
+}
+table td {
+border-width: 1px;
+border-style: inset;
+line-height: 18px;
+padding: 5px 5px;
+}
+table, table th, table td {
+border-left-style: none;
+border-right-style: none;
+}
+table thead, table tr.even {
+background-color: #f7f7f7;
+}
+p {
+margin: 0.5em 0;
+}
+blockquote {
+background-color: #f6f6f6;
+padding: 0.25em 0.75em;
+}
+hr {
+border-style: solid;
+border: none;
+border-top: 1px solid #777;
+margin: 28px 0;
+}
+dl {
+margin-left: 0;
+}
+dl dd {
+margin-bottom: 13px;
+margin-left: 13px;
+}
+dl dt {
+font-weight: bold;
+}
+ul {
+margin-top: 0;
+}
+ul li {
+list-style: circle outside;
+}
+ul ul {
+margin-bottom: 0;
+}
+pre, code {
+background-color: #f7f7f7;
+border-radius: 3px;
+color: #333;
+white-space: pre-wrap; 
+}
+pre {
+border-radius: 3px;
+margin: 5px 0px 10px 0px;
+padding: 10px;
+}
+pre:not([class]) {
+background-color: #f7f7f7;
+}
+code {
+font-family: Consolas, Monaco, 'Courier New', monospace;
+font-size: 85%;
+}
+p > code, li > code {
+padding: 2px 0px;
+}
+div.figure {
+text-align: center;
+}
+img {
+background-color: #FFFFFF;
+padding: 2px;
+border: 1px solid #DDDDDD;
+border-radius: 3px;
+border: 1px solid #CCCCCC;
+margin: 0 5px;
+}
+h1 {
+margin-top: 0;
+font-size: 35px;
+line-height: 40px;
+}
+h2 {
+border-bottom: 4px solid #f7f7f7;
+padding-top: 10px;
+padding-bottom: 2px;
+font-size: 145%;
+}
+h3 {
+border-bottom: 2px solid #f7f7f7;
+padding-top: 10px;
+font-size: 120%;
+}
+h4 {
+border-bottom: 1px solid #f7f7f7;
+margin-left: 8px;
+font-size: 105%;
+}
+h5, h6 {
+border-bottom: 1px solid #ccc;
+font-size: 105%;
+}
+a {
+color: #0033dd;
+text-decoration: none;
+}
+a:hover {
+color: #6666ff; }
+a:visited {
+color: #800080; }
+a:visited:hover {
+color: #BB00BB; }
+a[href^="http:"] {
+text-decoration: underline; }
+a[href^="https:"] {
+text-decoration: underline; }
+
+code > span.kw { color: #555; font-weight: bold; } 
+code > span.dt { color: #902000; } 
+code > span.dv { color: #40a070; } 
+code > span.bn { color: #d14; } 
+code > span.fl { color: #d14; } 
+code > span.ch { color: #d14; } 
+code > span.st { color: #d14; } 
+code > span.co { color: #888888; font-style: italic; } 
+code > span.ot { color: #007020; } 
+code > span.al { color: #ff0000; font-weight: bold; } 
+code > span.fu { color: #900; font-weight: bold; } 
+code > span.er { color: #a61717; background-color: #e3d2d2; } 
+</style>
 
 
 
@@ -169,97 +361,169 @@ div.csl-indent {
 
 
 
-<h1 class="title toc-ignore">K-means clustering using MUS and other pivotal algorithms</h1>
+<h1 class="title toc-ignore">K-means clustering using MUS and other
+pivotal algorithms</h1>
 <h4 class="author">Leonardo Egidi</h4>
-<h4 class="date">2023-02-22</h4>
+<h4 class="date">2024-05-29</h4>
 
 
 
-<p>In this vignette we explore the K-means algorithm performed using the MUS algorithm and other pivotal methods through the function <code>piv_KMeans</code> of the <code>pivmet</code> package. First of all, we load the package:</p>
-<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(pivmet)</span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(mvtnorm)</span></code></pre></div>
+<p>In this vignette we explore the K-means algorithm performed using the
+MUS algorithm and other pivotal methods through the function
+<code>piv_KMeans</code> of the <code>pivmet</code> package. First of
+all, we load the package:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="fu">library</span>(pivmet)</span>
+<span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a><span class="fu">library</span>(mvtnorm)</span></code></pre></div>
 <div id="pivotal-algorithms-how-they-works-and-why" class="section level2">
 <h2>Pivotal algorithms: how they works, and why</h2>
-<p>We present here a simulated case for applying our procedure. Given <span class="math inline">\(n\)</span> units <span class="math inline">\(y_1,\ldots,y_n\)</span>:</p>
+<p>We present here a simulated case for applying our procedure. Given
+<span class="math inline">\(n\)</span> units <span class="math inline">\(y_1,\ldots,y_n\)</span>:</p>
 <ul>
-<li><p>consider to build a <em>co-association</em> matrix <span class="math inline">\(C\)</span>, by taking the co-occurrences of pairs of <span class="math inline">\(n\)</span> units in the same cluster/group among the total number of partitions. For instance, this matrix could be constructed from a MCMC output arising from Bayesian mixture models;</p></li>
-<li><p>suppose we want to detect the <strong>pivotal units</strong>, as the observations that <em>are as far away from each other as possible</em> according to the co-association matrix. Units which are very distant from each other are likely to have zero co-occurrences;</p></li>
-<li><p>the resulting units—hereafter pivots—have the desirable property to be representative of the group they belong to.</p></li>
+<li><p>consider to build a <em>co-association</em> matrix <span class="math inline">\(C\)</span>, by taking the co-occurrences of pairs
+of <span class="math inline">\(n\)</span> units in the same
+cluster/group among the total number of partitions. For instance, this
+matrix could be constructed from a MCMC output arising from Bayesian
+mixture models;</p></li>
+<li><p>suppose we want to detect the <strong>pivotal units</strong>, as
+the observations that <em>are as far away from each other as
+possible</em> according to the co-association matrix. Units which are
+very distant from each other are likely to have zero
+co-occurrences;</p></li>
+<li><p>the resulting units—hereafter pivots—have the desirable property
+to be representative of the group they belong to.</p></li>
 </ul>
-<p>We propose four alternative methods for achieving this task. Let <span class="math inline">\(j, \ j=1,\ldots,k\)</span> be the group containing units <span class="math inline">\(\mathcal J_j\)</span>, the user may choose <span class="math inline">\({i^*}\in\mathcal J_j\)</span> that maximizes one of the quantities:</p>
+<p>We propose four alternative methods for achieving this task. Let
+<span class="math inline">\(j, \ j=1,\ldots,k\)</span> be the group
+containing units <span class="math inline">\(\mathcal J_j\)</span>, the
+user may choose <span class="math inline">\({i^*}\in\mathcal
+J_j\)</span> that maximizes one of the quantities:</p>
 <p><span class="math display">\[\begin{align*}
 &amp; \sum_{p\in\mathcal J_j} c_{{i^*}p}  \\
-&amp; \sum_{p\in\mathcal J_j} c_{{i^*}p} - \sum_{p\not\in\mathcal J_j} c_{{i^*}p}.
+&amp; \sum_{p\in\mathcal J_j} c_{{i^*}p} - \sum_{p\not\in\mathcal J_j}
+c_{{i^*}p}.
 \end{align*}\]</span></p>
-<p>These methods give the unit that maximizes the global within similarity (<code>maxsumint</code>) and the unit that maximizes the difference between global within and between similarities (<code>maxsumdiff</code>), respectively. Alternatively, we may choose <span class="math inline">\(i^{*} \in\mathcal J_j\)</span>, which minimizes:</p>
-<p><span class="math display">\[\sum_{p\not\in\mathcal J_j} c_{i^{*}p},\]</span></p>
-<p>obtaining the most distant unit among the members that minimize the global dissimilarity between one group and all the others (<code>minsumnoint</code>).</p>
-<p>MUS algorithm described in <span class="citation">Egidi et al. (2018b)</span> is a sequential procedure for extracting identity submatrices of small rank and pivotal units from large and sparse matrices. The procedure has already been satisfactorily applied for solving the label switching problem in Bayesian mixture models <span class="citation">(Egidi et al. 2018c)</span>.</p>
-<p>With the function <code>MUS</code> the user may detect pivotal units from a co-association matrix <code>C</code>, obtained through <span class="math inline">\(H\)</span> different partitions, whose units may belong to <span class="math inline">\(k\)</span> groups, expressed by the argument <code>clusters</code>. We remark here that MUS algorithm may be performed only when <span class="math inline">\(k &lt;5\)</span>.</p>
-<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co">#generate some data</span></span>
-<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">123</span>)</span>
-<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>n  <span class="ot">&lt;-</span> <span class="dv">620</span></span>
-<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>centers  <span class="ot">&lt;-</span> <span class="dv">3</span></span>
-<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>n1 <span class="ot">&lt;-</span> <span class="dv">20</span></span>
-<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>n2 <span class="ot">&lt;-</span> <span class="dv">100</span></span>
-<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>n3 <span class="ot">&lt;-</span> <span class="dv">500</span></span>
-<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>x  <span class="ot">&lt;-</span> <span class="fu">matrix</span>(<span class="cn">NA</span>, n,<span class="dv">2</span>)</span>
-<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>truegroup <span class="ot">&lt;-</span> <span class="fu">c</span>( <span class="fu">rep</span>(<span class="dv">1</span>,n1), <span class="fu">rep</span>(<span class="dv">2</span>, n2), <span class="fu">rep</span>(<span class="dv">3</span>, n3))</span>
-<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>x[<span class="dv">1</span><span class="sc">:</span>n1,] <span class="ot">&lt;-</span> <span class="fu">rmvnorm</span>(n1, <span class="fu">c</span>(<span class="dv">1</span>,<span class="dv">5</span>), <span class="at">sigma=</span><span class="fu">diag</span>(<span class="dv">2</span>))</span>
-<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>x[(n1<span class="sc">+</span><span class="dv">1</span>)<span class="sc">:</span>(n1<span class="sc">+</span>n2),] <span class="ot">&lt;-</span> <span class="fu">rmvnorm</span>(n2, <span class="fu">c</span>(<span class="dv">4</span>,<span class="dv">0</span>), <span class="at">sigma=</span><span class="fu">diag</span>(<span class="dv">2</span>))</span>
-<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>x[(n1<span class="sc">+</span>n2<span class="sc">+</span><span class="dv">1</span>)<span class="sc">:</span>(n1<span class="sc">+</span>n2<span class="sc">+</span>n3),] <span class="ot">&lt;-</span> <span class="fu">rmvnorm</span>(n3,<span class="fu">c</span>(<span class="dv">6</span>,<span class="dv">6</span>),<span class="at">sigma=</span><span class="fu">diag</span>(<span class="dv">2</span>))</span>
-<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>H <span class="ot">&lt;-</span> <span class="dv">1000</span></span>
-<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a>a <span class="ot">&lt;-</span> <span class="fu">matrix</span>(<span class="cn">NA</span>, H, n)</span>
-<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span> (h <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span>H){</span>
-<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a>    a[h,] <span class="ot">&lt;-</span> <span class="fu">kmeans</span>(x,centers)<span class="sc">$</span>cluster</span>
-<span id="cb2-22"><a href="#cb2-22" aria-hidden="true" tabindex="-1"></a>  }</span>
-<span id="cb2-23"><a href="#cb2-23" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-24"><a href="#cb2-24" aria-hidden="true" tabindex="-1"></a><span class="co">#build the similarity matrix</span></span>
-<span id="cb2-25"><a href="#cb2-25" aria-hidden="true" tabindex="-1"></a>sim_matr <span class="ot">&lt;-</span> <span class="fu">matrix</span>(<span class="cn">NA</span>, n,n)</span>
-<span id="cb2-26"><a href="#cb2-26" aria-hidden="true" tabindex="-1"></a> <span class="cf">for</span> (i <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span>(n<span class="dv">-1</span>)){</span>
-<span id="cb2-27"><a href="#cb2-27" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> (j <span class="cf">in</span> (i<span class="sc">+</span><span class="dv">1</span>)<span class="sc">:</span>n){</span>
-<span id="cb2-28"><a href="#cb2-28" aria-hidden="true" tabindex="-1"></a>      sim_matr[i,j] <span class="ot">&lt;-</span> <span class="fu">sum</span>(a[,i]<span class="sc">==</span>a[,j])<span class="sc">/</span>H</span>
-<span id="cb2-29"><a href="#cb2-29" aria-hidden="true" tabindex="-1"></a>      sim_matr[j,i] <span class="ot">&lt;-</span> sim_matr[i,j]</span>
-<span id="cb2-30"><a href="#cb2-30" aria-hidden="true" tabindex="-1"></a>    }</span>
-<span id="cb2-31"><a href="#cb2-31" aria-hidden="true" tabindex="-1"></a>  }</span>
-<span id="cb2-32"><a href="#cb2-32" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-33"><a href="#cb2-33" aria-hidden="true" tabindex="-1"></a>cl <span class="ot">&lt;-</span> <span class="fu">kmeans</span>(x, centers, <span class="at">nstart =</span> <span class="dv">10</span>)<span class="sc">$</span>cluster</span>
-<span id="cb2-34"><a href="#cb2-34" aria-hidden="true" tabindex="-1"></a>mus_alg <span class="ot">&lt;-</span> <span class="fu">MUS</span>(<span class="at">C =</span> sim_matr, <span class="at">clusters =</span> cl, <span class="at">prec_par =</span> <span class="dv">5</span>)</span></code></pre></div>
+<p>These methods give the unit that maximizes the global within
+similarity (<code>maxsumint</code>) and the unit that maximizes the
+difference between global within and between similarities
+(<code>maxsumdiff</code>), respectively. Alternatively, we may choose
+<span class="math inline">\(i^{*} \in\mathcal J_j\)</span>, which
+minimizes:</p>
+<p><span class="math display">\[\sum_{p\not\in\mathcal J_j}
+c_{i^{*}p},\]</span></p>
+<p>obtaining the most distant unit among the members that minimize the
+global dissimilarity between one group and all the others
+(<code>minsumnoint</code>).</p>
+<p>MUS algorithm described in <span class="citation">Egidi et al.
+(2018b)</span> is a sequential procedure for extracting identity
+submatrices of small rank and pivotal units from large and sparse
+matrices. The procedure has already been satisfactorily applied for
+solving the label switching problem in Bayesian mixture models <span class="citation">(Egidi et al. 2018c)</span>.</p>
+<p>With the function <code>MUS</code> the user may detect pivotal units
+from a co-association matrix <code>C</code>, obtained through <span class="math inline">\(H\)</span> different partitions, whose units may
+belong to <span class="math inline">\(k\)</span> groups, expressed by
+the argument <code>clusters</code>. We remark here that MUS algorithm
+may be performed only when <span class="math inline">\(k
+&lt;5\)</span>.</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a><span class="co">#generate some data</span></span>
+<span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a></span>
+<span id="cb2-3"><a href="#cb2-3" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">123</span>)</span>
+<span id="cb2-4"><a href="#cb2-4" tabindex="-1"></a>n  <span class="ot">&lt;-</span> <span class="dv">620</span></span>
+<span id="cb2-5"><a href="#cb2-5" tabindex="-1"></a>centers  <span class="ot">&lt;-</span> <span class="dv">3</span></span>
+<span id="cb2-6"><a href="#cb2-6" tabindex="-1"></a>n1 <span class="ot">&lt;-</span> <span class="dv">20</span></span>
+<span id="cb2-7"><a href="#cb2-7" tabindex="-1"></a>n2 <span class="ot">&lt;-</span> <span class="dv">100</span></span>
+<span id="cb2-8"><a href="#cb2-8" tabindex="-1"></a>n3 <span class="ot">&lt;-</span> <span class="dv">500</span></span>
+<span id="cb2-9"><a href="#cb2-9" tabindex="-1"></a>x  <span class="ot">&lt;-</span> <span class="fu">matrix</span>(<span class="cn">NA</span>, n,<span class="dv">2</span>)</span>
+<span id="cb2-10"><a href="#cb2-10" tabindex="-1"></a>truegroup <span class="ot">&lt;-</span> <span class="fu">c</span>( <span class="fu">rep</span>(<span class="dv">1</span>,n1), <span class="fu">rep</span>(<span class="dv">2</span>, n2), <span class="fu">rep</span>(<span class="dv">3</span>, n3))</span>
+<span id="cb2-11"><a href="#cb2-11" tabindex="-1"></a></span>
+<span id="cb2-12"><a href="#cb2-12" tabindex="-1"></a></span>
+<span id="cb2-13"><a href="#cb2-13" tabindex="-1"></a>x[<span class="dv">1</span><span class="sc">:</span>n1,] <span class="ot">&lt;-</span> <span class="fu">rmvnorm</span>(n1, <span class="fu">c</span>(<span class="dv">1</span>,<span class="dv">5</span>), <span class="at">sigma=</span><span class="fu">diag</span>(<span class="dv">2</span>))</span>
+<span id="cb2-14"><a href="#cb2-14" tabindex="-1"></a>x[(n1<span class="sc">+</span><span class="dv">1</span>)<span class="sc">:</span>(n1<span class="sc">+</span>n2),] <span class="ot">&lt;-</span> <span class="fu">rmvnorm</span>(n2, <span class="fu">c</span>(<span class="dv">4</span>,<span class="dv">0</span>), <span class="at">sigma=</span><span class="fu">diag</span>(<span class="dv">2</span>))</span>
+<span id="cb2-15"><a href="#cb2-15" tabindex="-1"></a>x[(n1<span class="sc">+</span>n2<span class="sc">+</span><span class="dv">1</span>)<span class="sc">:</span>(n1<span class="sc">+</span>n2<span class="sc">+</span>n3),] <span class="ot">&lt;-</span> <span class="fu">rmvnorm</span>(n3,<span class="fu">c</span>(<span class="dv">6</span>,<span class="dv">6</span>),<span class="at">sigma=</span><span class="fu">diag</span>(<span class="dv">2</span>))</span>
+<span id="cb2-16"><a href="#cb2-16" tabindex="-1"></a></span>
+<span id="cb2-17"><a href="#cb2-17" tabindex="-1"></a>H <span class="ot">&lt;-</span> <span class="dv">1000</span></span>
+<span id="cb2-18"><a href="#cb2-18" tabindex="-1"></a>a <span class="ot">&lt;-</span> <span class="fu">matrix</span>(<span class="cn">NA</span>, H, n)</span>
+<span id="cb2-19"><a href="#cb2-19" tabindex="-1"></a></span>
+<span id="cb2-20"><a href="#cb2-20" tabindex="-1"></a>  <span class="cf">for</span> (h <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span>H){</span>
+<span id="cb2-21"><a href="#cb2-21" tabindex="-1"></a>    a[h,] <span class="ot">&lt;-</span> <span class="fu">kmeans</span>(x,centers)<span class="sc">$</span>cluster</span>
+<span id="cb2-22"><a href="#cb2-22" tabindex="-1"></a>  }</span>
+<span id="cb2-23"><a href="#cb2-23" tabindex="-1"></a></span>
+<span id="cb2-24"><a href="#cb2-24" tabindex="-1"></a><span class="co">#build the similarity matrix</span></span>
+<span id="cb2-25"><a href="#cb2-25" tabindex="-1"></a>sim_matr <span class="ot">&lt;-</span> <span class="fu">matrix</span>(<span class="cn">NA</span>, n,n)</span>
+<span id="cb2-26"><a href="#cb2-26" tabindex="-1"></a> <span class="cf">for</span> (i <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span>(n<span class="dv">-1</span>)){</span>
+<span id="cb2-27"><a href="#cb2-27" tabindex="-1"></a>    <span class="cf">for</span> (j <span class="cf">in</span> (i<span class="sc">+</span><span class="dv">1</span>)<span class="sc">:</span>n){</span>
+<span id="cb2-28"><a href="#cb2-28" tabindex="-1"></a>      sim_matr[i,j] <span class="ot">&lt;-</span> <span class="fu">sum</span>(a[,i]<span class="sc">==</span>a[,j])<span class="sc">/</span>H</span>
+<span id="cb2-29"><a href="#cb2-29" tabindex="-1"></a>      sim_matr[j,i] <span class="ot">&lt;-</span> sim_matr[i,j]</span>
+<span id="cb2-30"><a href="#cb2-30" tabindex="-1"></a>    }</span>
+<span id="cb2-31"><a href="#cb2-31" tabindex="-1"></a>  }</span>
+<span id="cb2-32"><a href="#cb2-32" tabindex="-1"></a></span>
+<span id="cb2-33"><a href="#cb2-33" tabindex="-1"></a>cl <span class="ot">&lt;-</span> <span class="fu">kmeans</span>(x, centers, <span class="at">nstart =</span> <span class="dv">10</span>)<span class="sc">$</span>cluster</span>
+<span id="cb2-34"><a href="#cb2-34" tabindex="-1"></a>mus_alg <span class="ot">&lt;-</span> <span class="fu">MUS</span>(<span class="at">C =</span> sim_matr, <span class="at">clusters =</span> cl, <span class="at">prec_par =</span> <span class="dv">5</span>)</span></code></pre></div>
 </div>
 <div id="piv_kmeans-k-means-clustering-via-pivotal-units" class="section level2">
 <h2>piv_KMeans: k-means clustering via pivotal units</h2>
-<p>In some situations, classical K-means fails in recognizing the <em>true</em> groups:</p>
+<p>In some situations, classical K-means fails in recognizing the
+<em>true</em> groups:</p>
 <p><img src="data:image/png;base64,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" /><img src="data:image/png;base64,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" /></p>
-<p>For instance, when the groups are unbalanced or non-spherical shaped, we may need a more robust version of the classical K-means. The pivotal units may be used as initial seeds for K-means method <span class="citation">(Egidi et al. 2018a)</span>. The function <code>piv_KMeans</code> works as the <code>kmeans</code> function, with some optional arguments</p>
-<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>piv_res <span class="ot">&lt;-</span> <span class="fu">piv_KMeans</span>(x, centers)</span></code></pre></div>
+<p>For instance, when the groups are unbalanced or non-spherical shaped,
+we may need a more robust version of the classical K-means. The pivotal
+units may be used as initial seeds for K-means method <span class="citation">(Egidi et al. 2018a)</span>. The function
+<code>piv_KMeans</code> works as the <code>kmeans</code> function, with
+some optional arguments</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a>piv_res <span class="ot">&lt;-</span> <span class="fu">piv_KMeans</span>(x, centers)</span></code></pre></div>
 <p><img src="data:image/png;base64,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" /><img src="data:image/png;base64,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" /></p>
 <p>The function <code>piv_KMeans</code> has optional arguments:</p>
 <ul>
-<li><p><code>alg.type</code>: The clustering algorithm for the initial partition of the <span class="math inline">\(N\)</span> units into the desired number of clusters. Possible choices are <code>&quot;kmeans&quot;</code> (default) and <code>&quot;hclust&quot;</code>.</p></li>
-<li><p><code>method</code>: If <code>alg.type</code> is <code>&quot;hclust&quot;</code>, the character string defining the clustering method. The methods implemented are <code>&quot;single&quot;</code>,<code>&quot;complete&quot;</code>, <code>&quot;average&quot;</code>, <code>&quot;ward.D&quot;</code>, <code>&quot;ward.D2&quot;</code>, <code>&quot;mcquitty&quot;</code>,<code>&quot;median&quot;</code>, <code>&quot;centroid&quot;</code>. The default is <code>&quot;average&quot;</code>.</p></li>
-<li><p><code>piv.criterion</code>: one among the four different pivotal criteria described above and listed in <span class="citation">Egidi et al. (2018c)</span>: <code>MUS</code>, <code>maxsumint</code>, <code>minsumnoint</code>, <code>maxsumdiff</code>. <code>MUS</code> is the default criterion when <code>centers</code> <span class="math inline">\(\le\)</span> 4, whereas <code>maxsumint</code> is the default method when <code>centers</code> &gt; 4.</p></li>
-<li><p><code>H</code>: the number of distinct <span class="math inline">\(k\)</span>-means runs used for building the <span class="math inline">\(N \times N\)</span> co-association matrix. Default is <span class="math inline">\(10^3\)</span>.</p></li>
-<li><p><code>iter.max</code>: if <code>alg.type</code> is <code>&quot;KMeans&quot;</code>, the maximum number of iterations to be passed to <code>KMeans()</code>. Default is 10.</p></li>
-<li><p><code>nstart</code>: If <code>alg.type</code> is <code>&quot;kmeans&quot;</code>, the number of different starting random seeds to be passed to <code>kmeans()</code>. Default is 10.</p></li>
-<li><p><code>prec_par</code>: with this argument the user may increase the powerful of the underlying MUS algorithm (see <span class="citation">Egidi et al. (2018b)</span> for details). The usual choice is <span class="math inline">\(\min\{ 10, \underset{j}{\min}n_j \}\)</span>, where <span class="math inline">\(n_j\)</span> is the number of units belonging to the group <span class="math inline">\(j, \ j=1,\ldots,k\)</span>.</p></li>
+<li><p><code>alg.type</code>: The clustering algorithm for the initial
+partition of the <span class="math inline">\(N\)</span> units into the
+desired number of clusters. Possible choices are <code>&quot;kmeans&quot;</code>
+(default) and <code>&quot;hclust&quot;</code>.</p></li>
+<li><p><code>method</code>: If <code>alg.type</code> is
+<code>&quot;hclust&quot;</code>, the character string defining the clustering
+method. The methods implemented are
+<code>&quot;single&quot;</code>,<code>&quot;complete&quot;</code>, <code>&quot;average&quot;</code>,
+<code>&quot;ward.D&quot;</code>, <code>&quot;ward.D2&quot;</code>,
+<code>&quot;mcquitty&quot;</code>,<code>&quot;median&quot;</code>, <code>&quot;centroid&quot;</code>.
+The default is <code>&quot;average&quot;</code>.</p></li>
+<li><p><code>piv.criterion</code>: one among the four different pivotal
+criteria described above and listed in <span class="citation">Egidi et
+al. (2018c)</span>: <code>MUS</code>, <code>maxsumint</code>,
+<code>minsumnoint</code>, <code>maxsumdiff</code>. <code>MUS</code> is
+the default criterion when <code>centers</code> <span class="math inline">\(\le\)</span> 4, whereas <code>maxsumint</code> is
+the default method when <code>centers</code> &gt; 4.</p></li>
+<li><p><code>H</code>: the number of distinct <span class="math inline">\(k\)</span>-means runs used for building the <span class="math inline">\(N \times N\)</span> co-association matrix. Default
+is <span class="math inline">\(10^3\)</span>.</p></li>
+<li><p><code>iter.max</code>: if <code>alg.type</code> is
+<code>&quot;KMeans&quot;</code>, the maximum number of iterations to be passed to
+<code>KMeans()</code>. Default is 10.</p></li>
+<li><p><code>nstart</code>: If <code>alg.type</code> is
+<code>&quot;kmeans&quot;</code>, the number of different starting random seeds to
+be passed to <code>kmeans()</code>. Default is 10.</p></li>
+<li><p><code>prec_par</code>: with this argument the user may increase
+the powerful of the underlying MUS algorithm (see <span class="citation">Egidi et al. (2018b)</span> for details). The usual
+choice is <span class="math inline">\(\min\{ 10, \underset{j}{\min}n_j
+\}\)</span>, where <span class="math inline">\(n_j\)</span> is the
+number of units belonging to the group <span class="math inline">\(j, \
+j=1,\ldots,k\)</span>.</p></li>
 </ul>
 </div>
 <div id="references" class="section level2 unnumbered">
 <h2 class="unnumbered">References</h2>
-<div id="refs" class="references csl-bib-body hanging-indent">
+<div id="refs" class="references csl-bib-body hanging-indent" entry-spacing="0">
 <div id="ref-kmeans" class="csl-entry">
-Egidi, Leonardo, Roberta Pappadà, Francesco Pauli, and Nicola Torelli. 2018a. <span>“K-Means Seeding via MUS Algorithm.”</span> In <em>Book of Short Papers SIS 2018</em>, edited by A. Abbruzzo, E. Brentari, M. Chiodi, and D. Piacentino, 256–62. Pearson.
+Egidi, Leonardo, Roberta Pappadà, Francesco Pauli, and Nicola Torelli.
+2018a. <span>“K-Means Seeding via MUS Algorithm.”</span> In <em>Book of
+Short Papers SIS 2018</em>, edited by A. Abbruzzo, E. Brentari, M.
+Chiodi, and D. Piacentino, 256–62. Pearson.
 </div>
 <div id="ref-egidi2018mus" class="csl-entry">
-———. 2018b. <span>“Maxima Units Search (MUS) Algorithm: Methodology and Applications.”</span> In <em>Studies in Theoretical and Applied Statistics</em>, edited by C. Perna, M. Pratesi, and A. Ruiz-Gazen, 71–81. Springer.
+———. 2018b. <span>“Maxima Units Search (MUS) Algorithm: Methodology and
+Applications.”</span> In <em>Studies in Theoretical and Applied
+Statistics</em>, edited by C. Perna, M. Pratesi, and A. Ruiz-Gazen,
+71–81. Springer.
 </div>
 <div id="ref-egidi2018relabelling" class="csl-entry">
-———. 2018c. <span>“Relabelling in Bayesian Mixture Models by Pivotal Units.”</span> <em>Statistics and Computing</em> 28 (4): 957–69.
+———. 2018c. <span>“Relabelling in Bayesian Mixture Models by Pivotal
+Units.”</span> <em>Statistics and Computing</em> 28 (4): 957–69.
 </div>
 </div>
 </div>
